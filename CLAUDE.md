@@ -63,3 +63,15 @@ Useful admin endpoints: `GET /__admin/mappings`, `POST /__admin/mappings`,
 Rebuild, start the container, and curl each affected endpoint (and `/__admin/mappings` for the
 loaded count) before calling a change done. The Bruno CLI (`bru`) is not installed; the desktop
 app is.
+
+## Open questions
+
+- **Decryption in WireMock.** Proposed approach: a Java extension jar, either a template helper
+  (`{{decrypt request.body}}`) to put plain values in responses, or a request matcher to choose a
+  response by decrypted content. Waiting on the user: which of the two is needed, and the
+  algorithm and key source.
+- **`bruno/mocks/` vs `bruno/calls/`.** Undecided whether to move Get user / Get order into
+  `calls/` and drop `mocks/`.
+- **Port mismatch with the design doc.** Its Gatling example defaults `WIREMOCK_URL` to
+  `http://localhost:8089`; this container runs on 8080. Either set `WIREMOCK_URL` or run with
+  `-p 8089:8080`.
