@@ -1,7 +1,13 @@
 flowchart TD
     subgraph ROUTER["Router"]
         determine_downstream_partners["Determine downstream partners"]
+        map_invalid_request_to_400["Map invalid request to 400"]
+        map_partner_failure_to_502["Map partner failure to 502"]
+        partner_a_eligible{"Partner A eligible?"}
+        partner_b_eligible{"Partner B eligible?"}
+        partner_c_eligible{"Partner C eligible?"}
         receive_search_request["Receive search request"]
+        validate_request["Validate request"]
     end
     subgraph PARTNER_A["Partner A"]
         call_partner_a["Call Partner A"]
@@ -12,7 +18,15 @@ flowchart TD
     subgraph PARTNER_C["Partner C"]
         call_partner_c["Call Partner C"]
     end
-    determine_downstream_partners -->|"PNumber + valid driver license"| call_partner_b
-    determine_downstream_partners -->|"SSN + valid passport"| call_partner_a
-    determine_downstream_partners -->|"SSN"| call_partner_c
+    call_partner_a --> partner_b_eligible
+    call_partner_b --> partner_c_eligible
+    determine_downstream_partners --> partner_a_eligible
+    partner_a_eligible -->|no| partner_b_eligible
+    partner_a_eligible -->|yes| call_partner_a
+    partner_b_eligible -->|no| partner_c_eligible
+    partner_b_eligible -->|yes| call_partner_b
+    partner_c_eligible -->|yes| call_partner_c
     receive_search_request --> determine_downstream_partners
+    receive_search_request --> validate_request
+    receive_search_request -.->|"ConstraintViolationException"| map_invalid_request_to_400
+    receive_search_request -.->|"RestClientException"| map_partner_failure_to_502

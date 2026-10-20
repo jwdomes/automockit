@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Stream;
 
 /**
  * Builds the step tree as observations start and stop. Ignores observations without a flow.step key
@@ -17,19 +18,45 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class FlowRecorder {
 
+    record Note(long seq, String text) {
+    }
+
     static final class Step {
         final Observation.Context context;
         final String action;
         final String participant;     // Participant enum name
+        final String kind;            // FlowStepObservationConfig.KIND_STEP or KIND_DECISION
         final long startSeq;
         volatile long stopSeq = Long.MAX_VALUE;
         final List<Step> children = new CopyOnWriteArrayList<>();
+        final List<Note> notes = new CopyOnWriteArrayList<>();
 
-        Step(Observation.Context context, String action, String participant, long startSeq) {
+        Step(Observation.Context context, String action, String participant, String kind, long startSeq) {
             this.context = context;
             this.action = action;
             this.participant = participant;
+            this.kind = kind;
             this.startSeq = startSeq;
+        }
+
+        boolean isDecision() {
+            return FlowStepObservationConfig.KIND_DECISION.equals(kind);
+        }
+
+        String outcome() {
+            return context.getLowCardinalityKeyValue(FlowStepObservationConfig.OUTCOME_KEY).getValue();
+        }
+
+        String reason() {
+            KeyValue reason = context.getHighCardinalityKeyValue(FlowStepObservationConfig.REASON_KEY);
+            return reason == null ? "" : reason.getValue();
+        }
+
+        /** This step and all its descendants, depth first in start order. */
+        Stream<Step> flatten() {
+            return Stream.concat(Stream.of(this), children.stream()
+                    .sorted((a, b) -> Long.compare(a.startSeq, b.startSeq))
+                    .flatMap(Step::flatten));
         }
     }
 
@@ -48,13 +75,23 @@ public class FlowRecorder {
         public void onStart(Observation.Context ctx) {
             KeyValue action = ctx.getLowCardinalityKeyValue(FlowStepObservationConfig.STEP_KEY);
             KeyValue participant = ctx.getLowCardinalityKeyValue(FlowStepObservationConfig.PARTICIPANT_KEY);
-            if (action == null || participant == null) {
+            KeyValue kind = ctx.getLowCardinalityKeyValue(FlowStepObservationConfig.KIND_KEY);
+            if (action == null || participant == null || kind == null) {
                 return;
             }
-            Step step = new Step(ctx, action.getValue(), participant.getValue(), seq.incrementAndGet());
+            Step step = new Step(ctx, action.getValue(), participant.getValue(), kind.getValue(),
+                    seq.incrementAndGet());
             byContext.put(ctx, step);
             Step parent = nearestFlowParent(ctx);
             (parent == null ? roots : parent.children).add(step);
+        }
+
+        @Override
+        public void onEvent(Observation.Event event, Observation.Context ctx) {
+            Step step = byContext.get(ctx);
+            if (step != null && FlowNotes.NOTE_EVENT.equals(event.getName())) {
+                step.notes.add(new Note(seq.incrementAndGet(), event.getContextualName()));
+            }
         }
 
         @Override

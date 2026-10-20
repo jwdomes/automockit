@@ -2,6 +2,9 @@ package com.example.router.partner;
 
 import com.example.router.client.PartnerCClient;
 import com.example.router.client.PartnerCRequest;
+import com.example.router.docs.Decision;
+import com.example.router.docs.FlowDecision;
+import com.example.router.docs.Participant;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.Person;
 import com.example.router.dto.RequestDto;
@@ -17,8 +20,12 @@ public class PartnerCService {
         this.client = client;
     }
 
-    public boolean shouldCall(RequestDto request) {
-        return StringUtils.hasText(request.person().ssn());
+    @FlowDecision(question = "Partner C eligible?", participant = Participant.ROUTER, gates = "Call Partner C")
+    public Decision shouldCall(RequestDto request) {
+        if (!StringUtils.hasText(request.person().ssn())) {
+            return Decision.no("no SSN");
+        }
+        return Decision.yes("SSN");
     }
 
     public PartnerResult call(RequestDto request) {

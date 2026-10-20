@@ -4,7 +4,11 @@ sequenceDiagram
     participant ROUTER as Router
     participant PARTNER_C as Partner C
     UPSTREAM->>ROUTER: Receive search request
+    ROUTER->>ROUTER: Validate request
     ROUTER->>ROUTER: Determine downstream partners
+    Note over ROUTER: Partner A eligible? no — no valid passport
+    Note over ROUTER: Partner B eligible? no — no PNumber
+    Note over ROUTER: Partner C eligible? yes — SSN
     ROUTER->>PARTNER_C: Call Partner C
     PARTNER_C-->>ROUTER: response
-    ROUTER-->>UPSTREAM: response
+    ROUTER-->>UPSTREAM: 200 OK

@@ -1,0 +1,8 @@
+sequenceDiagram
+    %% Missing person.last: validation fails with 400 before any partner is considered
+    participant UPSTREAM as Upstream
+    participant ROUTER as Router
+    UPSTREAM->>ROUTER: Receive search request
+    ROUTER->>ROUTER: Validate request
+    ROUTER->>ROUTER: Map invalid request to 400
+    ROUTER-->>UPSTREAM: 400 Bad Request

@@ -5,9 +5,15 @@ sequenceDiagram
     participant PARTNER_A as Partner A
     participant PARTNER_B as Partner B
     UPSTREAM->>ROUTER: Receive search request
+    ROUTER->>ROUTER: Validate request
     ROUTER->>ROUTER: Determine downstream partners
+    Note over ROUTER: Partner A eligible? yes — SSN + valid passport
+    Note over ROUTER: Using passport FA0000006
     ROUTER->>PARTNER_A: Call Partner A
     PARTNER_A-->>ROUTER: response
+    Note over ROUTER: Partner B eligible? yes — PNumber + valid driver license
+    Note over ROUTER: Using driver license F00000006
     ROUTER->>PARTNER_B: Call Partner B
     PARTNER_B--xROUTER: InternalServerError
-    ROUTER--xUPSTREAM: InternalServerError
+    ROUTER->>ROUTER: Map partner failure to 502
+    ROUTER-->>UPSTREAM: 502 Bad Gateway

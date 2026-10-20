@@ -15,7 +15,7 @@ public class PartnerAClient {
         this.restClient = builder.baseUrl(baseUrl).build();
     }
 
-    @FlowStep(action = "Call Partner A", participant = Participant.PARTNER_A, when = "SSN + valid passport")
+    @FlowStep(action = "Call Partner A", participant = Participant.PARTNER_A)
     public PartnerMatchResponse match(String requestId, PartnerARequest request) {
         return restClient.post()
                 .uri("/matches")

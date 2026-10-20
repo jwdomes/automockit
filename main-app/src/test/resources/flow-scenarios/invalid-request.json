@@ -1,0 +1,23 @@
+{
+  "description": "Missing person.last: validation fails with 400 before any partner is considered",
+  "request": {
+    "header": {
+      "requestId": "invalid-request",
+      "source": "flow-scenario",
+      "timestamp": "2026-10-20T12:00:00Z"
+    },
+    "documents": [
+      {
+        "documentType": "PASSPORT",
+        "documentNumber": "FA0000007"
+      }
+    ],
+    "person": {
+      "first": "Lee",
+      "ssn": "900000007",
+      "birthDate": "1995-02-02"
+    }
+  },
+  "expectedStatus": 400,
+  "stubs": []
+}

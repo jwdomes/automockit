@@ -24,13 +24,13 @@ public class Router {
 
     @FlowStep(action = "Determine downstream partners", participant = Participant.ROUTER)
     public void route(RequestDto request, ResponseDto response) {
-        if (partnerA.shouldCall(request)) {
+        if (partnerA.shouldCall(request).yes()) {
             response.add(partnerA.call(request));
         }
-        if (partnerB.shouldCall(request)) {
+        if (partnerB.shouldCall(request).yes()) {
             response.add(partnerB.call(request));
         }
-        if (partnerC.shouldCall(request)) {
+        if (partnerC.shouldCall(request).yes()) {
             response.add(partnerC.call(request));
         }
     }

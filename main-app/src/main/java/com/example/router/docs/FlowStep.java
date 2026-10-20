@@ -17,7 +17,4 @@ public @interface FlowStep {
 
     /** Where: the system doing the work. */
     Participant participant();
-
-    /** Optional branch condition, shown on the incoming edge in the static graph. */
-    String when() default "";
 }

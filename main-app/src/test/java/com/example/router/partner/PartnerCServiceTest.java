@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.example.router.client.PartnerCClient;
 import com.example.router.client.PartnerCRequest;
 import com.example.router.client.PartnerMatchResponse;
+import com.example.router.docs.Decision;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -21,12 +22,12 @@ class PartnerCServiceTest {
 
     @Test
     void calledWithSsnEvenWithoutDocuments() {
-        assertThat(service.shouldCall(request("111223333", null))).isTrue();
+        assertThat(service.shouldCall(request("111223333", null))).isEqualTo(Decision.yes("SSN"));
     }
 
     @Test
     void notCalledWithOnlyPNumber() {
-        assertThat(service.shouldCall(request(null, "PN1001", nationalId("1234567890")))).isFalse();
+        assertThat(service.shouldCall(request(null, "PN1001", nationalId("1234567890")))).isEqualTo(Decision.no("no SSN"));
     }
 
     @Test

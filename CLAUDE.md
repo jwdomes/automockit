@@ -105,12 +105,31 @@ app is.
 
 This is the design doc's framework, applied to the router.
 
-- **Steps.** `@FlowStep` sits on `SearchController.search`, `Router.route` and each
-  `PartnerXClient.match`. It lives in `com.example.router.docs`, along with `Participant` and
-  `FlowStepObservationConfig`.
-- **Off by default.** The annotation does nothing unless `flow.observations.enabled=true`.
-- **Generated diagrams.** `main-app/docs/flow.mmd` shows every possible path, and
-  `main-app/docs/flows/<scenario>.mmd` shows one per scenario.
+- **Steps.** `@FlowStep` sits on:
+  - `SearchController.search` and `RequestValidator.validate`
+  - `Router.route`
+  - each `PartnerXClient.match`
+  - both `SearchExceptionHandler` methods (the 400 and 502 mappings)
+
+  It lives in `com.example.router.docs`, along with `Participant` and `FlowStepObservationConfig`.
+- **Decisions.** `@FlowDecision(question, participant, gates)` sits on each
+  `PartnerXService.shouldCall`, which returns `Decision.yes(reason)` or `Decision.no(reason)`.
+  - Static graph: a diamond, chained A → B → C in call-site order, with `yes` leading to the
+    gated step.
+  - Scenario diagrams: a note with the reason.
+- **Notes.** `FlowNotes.note(text)` adds a note to the step currently running, for example which
+  document was sent.
+- **Off by default.** The annotations do nothing unless `flow.observations.enabled=true`.
+- **Validation.** It's explicit (`RequestValidator`), not `@Valid`, so the 400 path is a step.
+  Malformed JSON still gets Spring's default 400 and isn't a step.
+- **Generated docs** in `main-app/docs/`:
+
+  | File | Contents |
+  | --- | --- |
+  | `flow.mmd` | Every possible path |
+  | `README.md` | The graph, plus tables of steps, decisions and scenarios |
+  | `flows/<scenario>.mmd` | One diagram per scenario. It ends with the status the caller got. |
+  | `flows/<scenario>.md` | Request, decisions table, diagram, partner calls (from WireMock's request log), router response |
 - **Snapshot rule.** `./gradlew build` fails if a committed diagram is stale. To regenerate after an
   intentional change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
 - **Scenarios.** They live in `main-app/src/test/resources/flow-scenarios/`. The test runs each one
@@ -119,11 +138,16 @@ This is the design doc's framework, applied to the router.
     (A), `$.pNumber` (B), `$.personIdentifier` (C).
   - Stub responses need a `Content-Type: application/json` header, or RestClient can't read them.
   - Don't use random delays, so the diagrams stay the same between runs.
-- **Rules.** `FlowStepCoverageTest` checks four things:
+- **Rules.** `FlowStepCoverageTest` checks that:
   - every public method on a `*Client` in `..client..` is a step
-  - actions are unique
-  - steps aren't private or final
-  - no step is called from its own class
+  - actions and questions are unique together
+  - steps and decisions aren't private or final, and aren't called from their own class
+  - every method returning `Decision` has `@FlowDecision`
+  - every `gates` names an existing step
+  - decisions are called only from steps
+- **Metrics.** Every flow observation carries `flow.kind` (`step` or `decision`) and
+  `flow.outcome` (`yes`, `no` or `none`), so the `flow.step` timer counts decision outcomes under
+  load.
 - **HTTP version.** `PartnerHttpConfig` pins RestClient to HTTP/1.1. Without it, the JDK client
   tries an h2c upgrade (HTTP/2 over plain HTTP), and WireMock's Jetty resets the stream.
 
