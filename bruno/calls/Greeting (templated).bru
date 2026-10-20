@@ -1,0 +1,19 @@
+meta {
+  name: Greeting (templated)
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/greeting?name=Bruno
+  body: none
+  auth: none
+}
+
+params:query {
+  name: Bruno
+}
+
+docs {
+  Response is built from the request: echoes the name query param and the current time.
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Cart - reset scenario
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/__admin/scenarios/reset
+  body: none
+  auth: none
+}
+
+docs {
+  Puts every scenario back to its starting state.
+}

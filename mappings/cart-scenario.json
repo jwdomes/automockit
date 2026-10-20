@@ -1,0 +1,35 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "cart",
+      "requiredScenarioState": "Started",
+      "request": { "method": "GET", "urlPath": "/api/cart" },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "items": [] }
+      }
+    },
+    {
+      "scenarioName": "cart",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "Item added",
+      "request": { "method": "POST", "urlPath": "/api/cart/items" },
+      "response": {
+        "status": 201,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "added": "widget" }
+      }
+    },
+    {
+      "scenarioName": "cart",
+      "requiredScenarioState": "Item added",
+      "request": { "method": "GET", "urlPath": "/api/cart" },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "items": [{ "sku": "widget", "qty": 1 }] }
+      }
+    }
+  ]
+}

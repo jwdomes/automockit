@@ -1,0 +1,22 @@
+meta {
+  name: Create user
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Ada Lovelace",
+    "email": "ada@example.com"
+  }
+}
+
+docs {
+  Matches on JSON body. Echoes name/email back with a random id. Remove the email to get a 400.
+}

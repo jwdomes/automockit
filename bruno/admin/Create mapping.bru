@@ -1,0 +1,31 @@
+meta {
+  name: Create mapping
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/__admin/mappings
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "request": {
+      "method": "GET",
+      "urlPath": "/api/orders/42"
+    },
+    "response": {
+      "status": 200,
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "jsonBody": {
+        "id": 42,
+        "userId": 1,
+        "status": "SHIPPED"
+      }
+    }
+  }
+}

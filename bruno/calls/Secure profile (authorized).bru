@@ -1,0 +1,19 @@
+meta {
+  name: Secure profile (authorized)
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/secure/profile
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer let-me-in
+}
+
+docs {
+  Header match. Any other token, or none, returns 401.
+}

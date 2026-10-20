@@ -1,0 +1,49 @@
+{
+  "mappings": [
+    {
+      "priority": 1,
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/users",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": "$.name"
+          },
+          {
+            "matchesJsonPath": "$[?(@.email =~ /.+@.+/)]"
+          }
+        ]
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "id": "{{randomValue type='UUID'}}",
+          "name": "{{jsonPath request.body '$.name'}}",
+          "email": "{{jsonPath request.body '$.email'}}"
+        },
+        "transformers": [
+          "response-template"
+        ]
+      }
+    },
+    {
+      "priority": 10,
+      "request": {
+        "method": "POST",
+        "urlPath": "/api/users"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "error": "name and a valid email are required"
+        }
+      }
+    }
+  ]
+}

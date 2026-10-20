@@ -1,0 +1,15 @@
+meta {
+  name: Service unavailable
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/unavailable
+  body: none
+  auth: none
+}
+
+docs {
+  503 with Retry-After header.
+}

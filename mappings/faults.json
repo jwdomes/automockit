@@ -1,0 +1,28 @@
+{
+  "mappings": [
+    {
+      "request": { "method": "GET", "urlPath": "/api/slow" },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "status": "eventually ok" },
+        "delayDistribution": { "type": "uniform", "lower": 1000, "upper": 3000 }
+      }
+    },
+    {
+      "request": { "method": "GET", "urlPath": "/api/unavailable" },
+      "response": {
+        "status": 503,
+        "headers": {
+          "Content-Type": "application/json",
+          "Retry-After": "30"
+        },
+        "jsonBody": { "error": "service unavailable" }
+      }
+    },
+    {
+      "request": { "method": "GET", "urlPath": "/api/broken" },
+      "response": { "fault": "CONNECTION_RESET_BY_PEER" }
+    }
+  ]
+}

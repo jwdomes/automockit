@@ -1,0 +1,15 @@
+meta {
+  name: Get order
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/orders/42
+  body: none
+  auth: none
+}
+
+docs {
+  Not mapped by default. Run "admin/Create mapping" first, otherwise WireMock returns 404.
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Create user (invalid)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/users
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "No Email"
+  }
+}
+
+docs {
+  Falls through to the lower-priority mapping and returns 400.
+}

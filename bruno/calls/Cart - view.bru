@@ -1,0 +1,15 @@
+meta {
+  name: Cart - view
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/cart
+  body: none
+  auth: none
+}
+
+docs {
+  Stateful scenario. Empty until 'Cart - add item' is called. Reset with 'Cart - reset scenario'.
+}

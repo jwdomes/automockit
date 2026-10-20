@@ -1,0 +1,15 @@
+meta {
+  name: Cart - add item
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/cart/items
+  body: none
+  auth: none
+}
+
+docs {
+  Moves the cart scenario to the 'Item added' state.
+}
