@@ -1,0 +1,26 @@
+meta {
+  name: C only (no valid docs)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{appUrl}}/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "header": { "requestId": "req-c", "source": "bruno", "timestamp": "2026-10-20T12:00:00Z" },
+    "documents": [
+      { "documentType": "PASSPORT", "documentNumber": "MH12" },
+      { "documentType": "NATIONAL_ID", "documentNumber": "1234567890" }
+    ],
+    "person": { "first": "Margaret", "last": "Hamilton", "ssn": "444556666", "birthDate": "1936-08-17" }
+  }
+}
+
+docs {
+  SSN present but the passport number is malformed and national IDs go to no partner, so only C is called.
+}

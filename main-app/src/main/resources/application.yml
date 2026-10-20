@@ -1,0 +1,10 @@
+server:
+  port: 8090
+
+partners:
+  a:
+    base-url: http://localhost:8091/partner-a
+  b:
+    base-url: http://localhost:8092/partner-b
+  c:
+    base-url: http://localhost:8093/partner-c

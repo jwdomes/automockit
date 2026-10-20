@@ -1,0 +1,23 @@
+meta {
+  name: Invalid (missing last)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{appUrl}}/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "header": { "requestId": "req-invalid", "source": "bruno", "timestamp": "2026-10-20T12:00:00Z" },
+    "documents": [],
+    "person": { "first": "Ada", "ssn": "111223333", "birthDate": "1815-12-10" }
+  }
+}
+
+docs {
+  person.last is required, so the router returns 400 before calling anyone.
+}

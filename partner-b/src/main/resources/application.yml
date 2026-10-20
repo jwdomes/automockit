@@ -1,0 +1,8 @@
+server:
+  port: 8092
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5442/partner_b
+    username: automockit
+    password: automockit

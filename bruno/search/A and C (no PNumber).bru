@@ -1,0 +1,26 @@
+meta {
+  name: A and C (no PNumber)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{appUrl}}/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "header": { "requestId": "req-a-c", "source": "bruno", "timestamp": "2026-10-20T12:00:00Z" },
+    "documents": [
+      { "documentType": "PASSPORT", "documentNumber": "GH7654321" },
+      { "documentType": "DRIVER_LICENSE", "documentNumber": "H20000002" }
+    ],
+    "person": { "first": "Grace", "last": "Hopper", "ssn": "222334444", "birthDate": "1906-12-09" }
+  }
+}
+
+docs {
+  No PNumber, so B is skipped even with a valid license. A and C are called.
+}
