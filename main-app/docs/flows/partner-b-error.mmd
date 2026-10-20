@@ -1,0 +1,13 @@
+sequenceDiagram
+    %% Partner B returns 500 after A succeeds: request fails with 502 and C is never called
+    participant UPSTREAM as Upstream
+    participant ROUTER as Router
+    participant PARTNER_A as Partner A
+    participant PARTNER_B as Partner B
+    UPSTREAM->>ROUTER: Receive search request
+    ROUTER->>ROUTER: Determine downstream partners
+    ROUTER->>PARTNER_A: Call Partner A
+    PARTNER_A-->>ROUTER: response
+    ROUTER->>PARTNER_B: Call Partner B
+    PARTNER_B--xROUTER: InternalServerError
+    ROUTER--xUPSTREAM: InternalServerError

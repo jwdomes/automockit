@@ -8,3 +8,9 @@ partners:
     base-url: http://localhost:8092/partner-b
   c:
     base-url: http://localhost:8093/partner-c
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics

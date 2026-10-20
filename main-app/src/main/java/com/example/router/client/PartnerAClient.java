@@ -1,5 +1,7 @@
 package com.example.router.client;
 
+import com.example.router.docs.FlowStep;
+import com.example.router.docs.Participant;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -13,6 +15,7 @@ public class PartnerAClient {
         this.restClient = builder.baseUrl(baseUrl).build();
     }
 
+    @FlowStep(action = "Call Partner A", participant = Participant.PARTNER_A, when = "SSN + valid passport")
     public PartnerMatchResponse match(String requestId, PartnerARequest request) {
         return restClient.post()
                 .uri("/matches")

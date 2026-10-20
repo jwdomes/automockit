@@ -1,0 +1,55 @@
+{
+  "description": "PNumber and valid license but no SSN: only B is called",
+  "request": {
+    "header": {
+      "requestId": "b-only",
+      "source": "flow-scenario",
+      "timestamp": "2026-10-20T12:00:00Z"
+    },
+    "documents": [
+      {
+        "documentType": "DRIVER_LICENSE",
+        "documentNumber": "F00000003"
+      }
+    ],
+    "person": {
+      "first": "Hana",
+      "last": "Cole",
+      "pNumber": "PN900003",
+      "birthDate": "1990-09-09"
+    }
+  },
+  "expectedStatus": 200,
+  "stubs": [
+    {
+      "request": {
+        "method": "POST",
+        "urlPath": "/partner-b/matches",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.pNumber",
+              "equalTo": "PN900003"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "matches": [
+            {
+              "firstName": "Hana",
+              "lastName": "Cole",
+              "birthDate": "1990-09-09",
+              "matchProbability": 1.0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

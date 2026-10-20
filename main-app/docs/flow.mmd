@@ -1,0 +1,18 @@
+flowchart TD
+    subgraph ROUTER["Router"]
+        determine_downstream_partners["Determine downstream partners"]
+        receive_search_request["Receive search request"]
+    end
+    subgraph PARTNER_A["Partner A"]
+        call_partner_a["Call Partner A"]
+    end
+    subgraph PARTNER_B["Partner B"]
+        call_partner_b["Call Partner B"]
+    end
+    subgraph PARTNER_C["Partner C"]
+        call_partner_c["Call Partner C"]
+    end
+    determine_downstream_partners -->|"PNumber + valid driver license"| call_partner_b
+    determine_downstream_partners -->|"SSN + valid passport"| call_partner_a
+    determine_downstream_partners -->|"SSN"| call_partner_c
+    receive_search_request --> determine_downstream_partners

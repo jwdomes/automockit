@@ -1,0 +1,77 @@
+{
+  "description": "Partner B returns 500 after A succeeds: request fails with 502 and C is never called",
+  "request": {
+    "header": {
+      "requestId": "partner-b-error",
+      "source": "flow-scenario",
+      "timestamp": "2026-10-20T12:00:00Z"
+    },
+    "documents": [
+      {
+        "documentType": "PASSPORT",
+        "documentNumber": "FA0000006"
+      },
+      {
+        "documentType": "DRIVER_LICENSE",
+        "documentNumber": "F00000006"
+      }
+    ],
+    "person": {
+      "first": "Kai",
+      "last": "Ford",
+      "ssn": "900000006",
+      "pNumber": "PN900006",
+      "birthDate": "1970-07-07"
+    }
+  },
+  "expectedStatus": 502,
+  "stubs": [
+    {
+      "request": {
+        "method": "POST",
+        "urlPath": "/partner-a/matches",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.personId",
+              "equalTo": "900000006"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "matches": [
+            {
+              "firstName": "Kai",
+              "lastName": "Ford",
+              "birthDate": "1970-07-07",
+              "matchProbability": 1.0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "urlPath": "/partner-b/matches",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.pNumber",
+              "equalTo": "PN900006"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 500
+      }
+    }
+  ]
+}

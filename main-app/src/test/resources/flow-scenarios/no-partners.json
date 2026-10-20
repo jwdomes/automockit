@@ -1,0 +1,18 @@
+{
+  "description": "No SSN and no PNumber: no partner is called",
+  "request": {
+    "header": {
+      "requestId": "no-partners",
+      "source": "flow-scenario",
+      "timestamp": "2026-10-20T12:00:00Z"
+    },
+    "documents": [],
+    "person": {
+      "first": "Jo",
+      "last": "Ellis",
+      "birthDate": "2000-01-01"
+    }
+  },
+  "expectedStatus": 200,
+  "stubs": []
+}

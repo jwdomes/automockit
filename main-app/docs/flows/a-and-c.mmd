@@ -1,0 +1,13 @@
+sequenceDiagram
+    %% SSN and valid passport but no PNumber: A and C are called, B is skipped
+    participant UPSTREAM as Upstream
+    participant ROUTER as Router
+    participant PARTNER_A as Partner A
+    participant PARTNER_C as Partner C
+    UPSTREAM->>ROUTER: Receive search request
+    ROUTER->>ROUTER: Determine downstream partners
+    ROUTER->>PARTNER_A: Call Partner A
+    PARTNER_A-->>ROUTER: response
+    ROUTER->>PARTNER_C: Call Partner C
+    PARTNER_C-->>ROUTER: response
+    ROUTER-->>UPSTREAM: response

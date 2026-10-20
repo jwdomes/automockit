@@ -24,7 +24,7 @@ bruno/            Bruno collection (open this folder in Bruno, pick the "local" 
   environments/   local.bru -> baseUrl http://localhost:8080 (WireMock), appUrl http://localhost:8090
 compose.yaml      Postgres 17 on localhost:5442 (5432 is taken by another project here)
 docker/           init script creating partner_a, partner_b, partner_c databases
-main-app/         router, com.example.router, port 8090
+main-app/         router, com.example.router, port 8090; flow docs in main-app/docs/
 partner-a/        com.example.partner.a, port 8091, POST /partner-a/matches
 partner-b/        com.example.partner.b, port 8092, POST /partner-b/matches
 partner-c/        com.example.partner.c, port 8093, POST /partner-c/matches
@@ -101,16 +101,44 @@ Rebuild, start the container, and curl each affected endpoint (and `/__admin/map
 loaded count) before calling a change done. The Bruno CLI (`bru`) is not installed; the desktop
 app is.
 
-## Next: phase 2
+## Flow docs (main-app)
 
-The design doc's framework goes into `main-app`:
-- `@FlowStep` with Participants ROUTER, PARTNER_A/B/C, plus the observation config
-- ArchUnit static graph and rules
-- JSON scenarios with WireMock stubs
-- Gatling
+This is the design doc's framework, applied to the router.
 
-Put the annotation on `PartnerXClient.match`. Partner paths are already prefixed with
-`/partner-x`, so one WireMock can stand in for all three.
+- **Steps.** `@FlowStep` sits on `SearchController.search`, `Router.route` and each
+  `PartnerXClient.match`. It lives in `com.example.router.docs`, along with `Participant` and
+  `FlowStepObservationConfig`.
+- **Off by default.** The annotation does nothing unless `flow.observations.enabled=true`.
+- **Generated diagrams.** `main-app/docs/flow.mmd` shows every possible path, and
+  `main-app/docs/flows/<scenario>.mmd` shows one per scenario.
+- **Snapshot rule.** `./gradlew build` fails if a committed diagram is stale. To regenerate after an
+  intentional change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
+- **Scenarios.** They live in `main-app/src/test/resources/flow-scenarios/`. The test runs each one
+  against an in-process WireMock that serves all three `/partner-x` paths.
+  - Give each scenario its own SSN or PNumber, and match on it in `bodyPatterns`: `$.personId`
+    (A), `$.pNumber` (B), `$.personIdentifier` (C).
+  - Stub responses need a `Content-Type: application/json` header, or RestClient can't read them.
+  - Don't use random delays, so the diagrams stay the same between runs.
+- **Rules.** `FlowStepCoverageTest` checks four things:
+  - every public method on a `*Client` in `..client..` is a step
+  - actions are unique
+  - steps aren't private or final
+  - no step is called from its own class
+- **HTTP version.** `PartnerHttpConfig` pins RestClient to HTTP/1.1. Without it, the JDK client
+  tries an h2c upgrade (HTTP/2 over plain HTTP), and WireMock's Jetty resets the stream.
+
+Gatling load test (`main-app/src/gatling/java/.../FlowScenariosSimulation.java`):
+
+```bash
+docker run -d --rm --name wiremock -p 8080:8080 wiremock-local
+java -jar main-app/build/libs/main-app.jar --spring.profiles.active=wiremock --flow.observations.enabled=true
+./gradlew :main-app:gatlingRun        # env: APP_URL, WIREMOCK_URL, PARTNER_DELAY_MS, PEAK_USERS_PER_SEC, RAMP_SECONDS
+curl 'localhost:8090/actuator/metrics/flow.step?tag=flow.participant:PARTNER_A'
+```
+
+- `before()` resets WireMock and loads every scenario's stubs at once. The baked-in `/api/*`
+  mappings don't overlap with them.
+- The `wiremock` profile points all three partner base URLs at `localhost:8080`.
 
 ## Open questions
 
@@ -120,6 +148,3 @@ Put the annotation on `PartnerXClient.match`. Partner paths are already prefixed
   algorithm and key source.
 - **`bruno/mocks/` vs `bruno/calls/`.** Undecided whether to move Get user / Get order into
   `calls/` and drop `mocks/`.
-- **Port mismatch with the design doc.** Its Gatling example defaults `WIREMOCK_URL` to
-  `http://localhost:8089`; this container runs on 8080. Either set `WIREMOCK_URL` or run with
-  `-p 8089:8080`.

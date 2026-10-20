@@ -1,0 +1,89 @@
+{
+  "description": "SSN and valid passport but no PNumber: A and C are called, B is skipped",
+  "request": {
+    "header": {
+      "requestId": "a-and-c",
+      "source": "flow-scenario",
+      "timestamp": "2026-10-20T12:00:00Z"
+    },
+    "documents": [
+      {
+        "documentType": "PASSPORT",
+        "documentNumber": "FA0000002"
+      },
+      {
+        "documentType": "DRIVER_LICENSE",
+        "documentNumber": "F00000002"
+      }
+    ],
+    "person": {
+      "first": "Gil",
+      "last": "Baker",
+      "ssn": "900000002",
+      "birthDate": "1975-05-05"
+    }
+  },
+  "expectedStatus": 200,
+  "stubs": [
+    {
+      "request": {
+        "method": "POST",
+        "urlPath": "/partner-a/matches",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.personId",
+              "equalTo": "900000002"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "matches": [
+            {
+              "firstName": "Gil",
+              "lastName": "Baker",
+              "birthDate": "1975-05-05",
+              "matchProbability": 1.0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "urlPath": "/partner-c/matches",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.personIdentifier",
+              "equalTo": "900000002"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "matches": [
+            {
+              "firstName": "Gil",
+              "lastName": "Baker",
+              "birthDate": "1975-05-05",
+              "matchProbability": 1.0
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
