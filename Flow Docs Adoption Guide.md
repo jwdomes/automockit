@@ -81,7 +81,7 @@ tasks.named('test') {
 | Property | Default | Effect |
 | --- | --- | --- |
 | `flow.observations.enabled` | unset (off) | Off: the library registers no beans, proxies or expression parsers, so the annotations are inert metadata. On: annotated methods are recorded as `flow.step` observations. |
-| `flow.observations.strict` | `false` | `true`: a decision whose conditions disagree with its return value, or a broken expression, throws. Use this in tests only. `false`: logs a warning instead. |
+| `flow.observations.strict` | `false` | `true`: a decision or branch whose conditions disagree with what happened, a branch whose both paths ran, or a broken expression, throws. Use this in tests only. `false`: logs a warning instead. |
 
 Where to set them:
 
@@ -133,13 +133,31 @@ public boolean shouldCall(RequestDto request) { ... }
 public void route(RequestDto request, ResponseDto response) { if (useNewIdProvider) { ... } else { ... } }
 ```
 
+**Decision or branch?**
+- **`@FlowDecision`:** the `if` calls a boolean method, as in `if (partnerA.shouldCall(request))`.
+  Annotate that method.
+- **`@FlowBranch`:** the condition is written inline, as in `if (useNewIdProvider)`. Declare it on
+  the `@FlowStep` method that contains it.
+
 **How `@FlowBranch` works**
-- **Outcome.** It's "yes" if the `gates` step runs during the method call, and "no" if the
-  `otherwise` step does.
-- **Placement.** The branch is recorded just before that step.
-- **Conditions** are evaluated when the method starts.
-- **`#property('key')`** reads the app's configuration in any condition or note.
-- **Prefer `@FlowDecision`** when the `if` already calls a method you can annotate.
+- **Outcome.** The outcome is observed, not declared. It's "yes" if the `gates` step runs during
+  the method call, and "no" if the `otherwise` step does. Both steps must be `@FlowStep`s, called
+  from the method directly or through helpers.
+- **Placement.** The branch is recorded just before whichever of those steps runs, so the note sits
+  in the right place in the sequence diagram.
+- **`otherwise` is optional.** Leave it out for an `if` with no `else` step. A branch that never
+  fires is then recorded as "no" when the method returns.
+- **Repeatable.** Put one `@FlowBranch` per inline branch on the same method. The static graph
+  orders them with any decisions, by where their steps are called in the method.
+- **Conditions** are optional and evaluated when the method starts. They can use the method's
+  arguments (`#name`), and `#property('key')` to read the app's configuration.
+  - A condition can't see local variables computed inside the method. For a branch that tests one,
+    leave `conditions` out: you still get the observed yes/no and the graph, just not the ✓/✗.
+  - With `#property`, an unset key is `null`. Write the condition so that matches the code's
+    default, for example `== 'true'` for `@Value("${flag:false}")`. The cross-check catches a
+    mismatch.
+- **Cross-check.** In strict mode, the call fails if the conditions disagree with which step ran,
+  or if both steps ran in one call.
 
 These rules are enforced at build time by `FlowDocsRules`:
 
@@ -163,8 +181,10 @@ These rules are enforced at build time by `FlowDocsRules`:
 Not enforced, but required: conditions are ANDed and all of them are evaluated, so each one must be
 safe to run when an earlier one is false (null-safe, no side effects).
 
-At test time, each scenario also fails if a gated step ran after its decision said no, or ran
-without its decision being made.
+At test time, each scenario also fails if a gated step ran against its decision or branch, or
+without its decision or branch being made:
+- a `gates` step needs a "yes"
+- a branch's `otherwise` step needs a "no"
 
 ### Downstream calls through a client library
 
@@ -239,10 +259,25 @@ class FlowScenarioDocsTest {
 }
 ```
 
-- **One test class per configuration.** Scenarios that need different configuration (section 7,
-  `properties`) run from another test class with those properties in its `@SpringBootTest`. It
-  passes the same map to `Scenario.names`. Shared wiring can live in an abstract base class, like
-  `ScenarioDocsTestSupport` in this repo. Two guards apply:
+- **One test class per configuration.** Configuration is fixed per application context, so a
+  branch on a property needs a scenario test class per property value. Give each class those
+  properties in its `@SpringBootTest`, and pass the same map to `Scenario.names`:
+
+  ```java
+  @SpringBootTest(properties = {
+          "flow.observations.enabled=true", "flow.observations.strict=true", "id-provider.use-new=true"})
+  class NewIdProviderScenarioDocsTest extends ScenarioDocsTestSupport {   // shared wiring, as above
+      static Stream<String> scenarios() throws IOException {
+          return Scenario.names(AppFlowDocs.SETTINGS.scenariosDir(), Map.of("id-provider.use-new", "true"));
+      }
+      @ParameterizedTest(name = "{0}") @MethodSource("scenarios")
+      void scenario(String name) throws Exception { run(name); }
+  }
+  ```
+
+  The shared wiring (the WireMock extension, `@DynamicPropertySource`, `MockMvc`, `FlowRecorder`
+  and the runner) can live in an abstract base class, like `ScenarioDocsTestSupport` in this repo.
+  Two guards apply:
   - a scenario fails if its context lacks its properties
   - the build fails if a scenario has no generated page, meaning no class runs its properties
 - **`http2PlainDisabled(true)` is required.** Spring's `RestClient` uses the JDK HttpClient, which
@@ -290,8 +325,8 @@ Output in `<app>/docs/`:
 
 | File | Contents |
 | --- | --- |
-| `flow.mmd` | Static graph |
-| `README.md` | Graph, steps and decisions, scenarios |
+| `flow.mmd` | Static graph, with decisions and branches as condition diamonds |
+| `README.md` | Graph, then steps, decisions and branches, then scenarios with their properties |
 | `flows/<name>.mmd` | Sequence diagram |
 | `flows/<name>.md` | Request, decisions, diagram, downstream calls, response |
 
@@ -322,6 +357,13 @@ Then:
 ## Limits
 
 - **Spring MVC only.** WebFlux would need context propagation to keep steps nested across threads.
+- **Branches are tracked per thread.** A `gates` or `otherwise` step that runs on another thread
+  isn't seen, and the branch is recorded as "no".
+- **A branch inside a loop** records only its first pass in each call. If a later pass takes the
+  other path, that counts as "both paths ran", which fails in strict mode. Declare such a branch on
+  a step called once per pass instead.
+- **Multi-way `switch` statements** aren't supported yet. `@FlowBranch` covers yes/no, with one
+  `gates` step and one `otherwise` step.
 - **MockMvc doesn't render the servlet container's error page,** so a request rejected before the
   controller shows an empty body on its scenario page.
 - **Boot 4 / Jackson 3.** The test module reads scenarios with `tools.jackson`.
