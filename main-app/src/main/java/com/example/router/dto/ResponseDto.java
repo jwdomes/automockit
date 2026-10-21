@@ -6,6 +6,7 @@ import java.util.List;
 public class ResponseDto {
 
     private final String requestId;
+    private String personId;
     private final List<PartnerResult> results = new ArrayList<>();
 
     public ResponseDto(String requestId) {
@@ -18,6 +19,14 @@ public class ResponseDto {
 
     public String getRequestId() {
         return requestId;
+    }
+
+    public String getPersonId() {
+        return personId;
+    }
+
+    public void setPersonId(String personId) {
+        this.personId = personId;
     }
 
     public List<PartnerResult> getResults() {

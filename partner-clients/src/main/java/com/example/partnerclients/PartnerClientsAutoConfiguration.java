@@ -6,7 +6,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestClient;
 
-/** Registers a RestClient-backed client per partner, at partners.{a,b,c}.base-url. */
+/**
+ * Registers a RestClient-backed client per partner, at partners.{a,b,c}.base-url, and per ID provider, at
+ * id-provider.{new,legacy}.base-url.
+ */
 @AutoConfiguration
 public class PartnerClientsAutoConfiguration {
 
@@ -26,5 +29,19 @@ public class PartnerClientsAutoConfiguration {
     @ConditionalOnMissingBean
     PartnerCClient partnerCClient(RestClient.Builder builder, @Value("${partners.c.base-url}") String baseUrl) {
         return new RestPartnerCClient(builder.baseUrl(baseUrl).build());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    NewIdProviderClient newIdProviderClient(RestClient.Builder builder,
+                                            @Value("${id-provider.new.base-url}") String baseUrl) {
+        return new RestNewIdProviderClient(builder.baseUrl(baseUrl).build());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    LegacyIdProviderClient legacyIdProviderClient(RestClient.Builder builder,
+                                                  @Value("${id-provider.legacy.base-url}") String baseUrl) {
+        return new RestLegacyIdProviderClient(builder.baseUrl(baseUrl).build());
     }
 }

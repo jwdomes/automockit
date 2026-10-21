@@ -14,3 +14,11 @@ management:
     web:
       exposure:
         include: health,metrics
+
+# ID providers exist only as WireMock stubs (mappings/id-providers.json).
+id-provider:
+  use-new: false
+  new:
+    base-url: http://localhost:8080/new-id-provider
+  legacy:
+    base-url: http://localhost:8080/legacy-id-provider

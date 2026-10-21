@@ -42,6 +42,8 @@ class FlowScenarioDocsTest {
         registry.add("partners.a.base-url", () -> partners.baseUrl() + "/partner-a");
         registry.add("partners.b.base-url", () -> partners.baseUrl() + "/partner-b");
         registry.add("partners.c.base-url", () -> partners.baseUrl() + "/partner-c");
+        registry.add("id-provider.new.base-url", () -> partners.baseUrl() + "/new-id-provider");
+        registry.add("id-provider.legacy.base-url", () -> partners.baseUrl() + "/legacy-id-provider");
     }
 
     @Autowired

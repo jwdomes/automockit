@@ -31,6 +31,29 @@
     {
       "request": {
         "method": "POST",
+        "urlPath": "/legacy-id-provider/lookup",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.lastName",
+              "equalTo": "Ames"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "personId": "LEGACY-AMES"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
         "urlPath": "/partner-a/matches",
         "bodyPatterns": [
           {

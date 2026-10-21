@@ -2,9 +2,12 @@ sequenceDiagram
     %% SSN with a malformed passport: only C is called
     participant UPSTREAM as Upstream
     participant ROUTER as Router
+    participant LEGACY_ID_PROVIDER as Legacy ID Provider
     participant PARTNER_C as Partner C
     UPSTREAM->>ROUTER: Receive search request
     ROUTER->>ROUTER: Determine downstream partners
+    ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
+    LEGACY_ID_PROVIDER-->>ROUTER: response
     Note over ROUTER: Partner A eligible? no — SSN present ✓, valid passport ✗
     Note over ROUTER: Partner B eligible? no — PNumber present ✗, valid driver license ✗
     Note over ROUTER: Partner C eligible? yes — SSN present ✓

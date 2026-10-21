@@ -17,6 +17,12 @@ public final class Participants {
     @FlowParticipant(label = "Partner C")
     public static final String PARTNER_C = "PARTNER_C";
 
+    @FlowParticipant(label = "New ID Provider")
+    public static final String NEW_ID_PROVIDER = "NEW_ID_PROVIDER";
+
+    @FlowParticipant(label = "Legacy ID Provider")
+    public static final String LEGACY_ID_PROVIDER = "LEGACY_ID_PROVIDER";
+
     private Participants() {
     }
 }

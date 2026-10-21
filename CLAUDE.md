@@ -28,8 +28,9 @@ flowdocs/         flow-docs library, one Gradle project:
   src/main/            annotations (com.example.flowdocs) + runtime (.boot): inert unless enabled
   src/testFixtures/    test support (.test): recorder, renderers, graph, scenario runner, rules
   src/test/            the library's own tests
-partner-clients/  stand-in for the separate client repo: PartnerXClient interfaces + RestClient
-                  implementations (com.example.partnerclients), wired by auto-configuration
+partner-clients/  stand-in for the separate client repo: PartnerXClient and New/LegacyIdProviderClient
+                  interfaces + RestClient implementations (com.example.partnerclients), wired by
+                  auto-configuration
 main-app/         router, com.example.router, port 8090; flow docs in main-app/docs/
 partner-a/        com.example.partner.a, port 8091, POST /partner-a/matches
 partner-b/        com.example.partner.b, port 8092, POST /partner-b/matches
@@ -38,8 +39,13 @@ partner-c/        com.example.partner.c, port 8093, POST /partner-c/matches
 
 ## Router and partners
 
-`POST /search` takes `{header, documents[], person}`. `SearchController` creates a `ResponseDto`,
-and `Router` runs A, B, then C. For each partner, its `PartnerXService.shouldCall` decides whether
+`POST /search` takes `{header, documents[], person}`. `SearchController` creates a `ResponseDto`.
+
+`Router` first resolves a canonical `personId` through `IdProviderService`. It uses the new ID
+provider if `id-provider.use-new` is true, and the legacy one otherwise (the default). This is an
+inline if/else in `route()`.
+
+It then runs A, B, then C. For each partner, its `PartnerXService.shouldCall` decides whether
 to call it, and `PartnerXService.call` makes the call through the `PartnerXClient` interface.
 
 | Partner | Called when | Sent |
@@ -95,6 +101,7 @@ Useful admin endpoints: `GET /__admin/mappings`, `POST /__admin/mappings`,
 | `secure.json` | `GET /api/secure/profile` | Header matching (`Bearer let-me-in`); fallback 401 |
 | `faults.json` | `/api/slow`, `/api/unavailable`, `/api/broken` | Random delay, 503 + Retry-After, connection reset |
 | `cart-scenario.json` | `GET /api/cart`, `POST /api/cart/items` | Stateful scenario |
+| `id-providers.json` | `POST /new-id-provider/lookup`, `POST /legacy-id-provider/lookup` | Stand-ins for the two ID providers; templated `personId`; priority 10 so scenario stubs win |
 
 ## Conventions
 
@@ -174,6 +181,10 @@ change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
 - The test uses one in-process WireMock for all three `/partner-x` paths.
 - Give each scenario its own SSN or PNumber, and match on it in `bodyPatterns`: `$.personId` (A),
   `$.pNumber` (B), `$.personIdentifier` (C).
+- **ID provider stub.** Every scenario that reaches `route()` needs a legacy ID provider stub,
+  because tests run with the default flag. It matches on the scenario's `$.lastName`.
+- **New-provider path.** No scenario covers it yet: the flag is per application context, not per
+  request. `RouterTest` covers both branches.
 - Stub responses need `Content-Type: application/json`.
 - Don't use random delays.
 

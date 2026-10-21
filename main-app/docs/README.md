@@ -7,6 +7,12 @@ and commit the result.
 
 ```mermaid
 flowchart TD
+    subgraph LEGACY_ID_PROVIDER["Legacy ID Provider"]
+        call_legacy_id_provider["Call Legacy ID Provider"]
+    end
+    subgraph NEW_ID_PROVIDER["New ID Provider"]
+        call_new_id_provider["Call New ID Provider"]
+    end
     subgraph PARTNER_A["Partner A"]
         call_partner_a["Call Partner A"]
     end
@@ -34,6 +40,8 @@ flowchart TD
     end
     call_partner_a --> partner_b_eligible__pnumber_present
     call_partner_b --> partner_c_eligible__ssn_present
+    determine_downstream_partners --> call_legacy_id_provider
+    determine_downstream_partners --> call_new_id_provider
     determine_downstream_partners --> partner_a_eligible__ssn_present
     partner_a_eligible__ssn_present -->|no| partner_b_eligible__pnumber_present
     partner_a_eligible__ssn_present -->|yes| partner_a_eligible__valid_passport
@@ -52,6 +60,8 @@ flowchart TD
 
 | Name | Kind | Participant | Code |
 | --- | --- | --- | --- |
+| Call Legacy ID Provider | step | Legacy ID Provider | [`IdProviderService#lookupWithLegacy`](../src/main/java/com/example/router/idprovider/IdProviderService.java) |
+| Call New ID Provider | step | New ID Provider | [`IdProviderService#lookupWithNew`](../src/main/java/com/example/router/idprovider/IdProviderService.java) |
 | Call Partner A | step | Partner A | [`PartnerAService#call`](../src/main/java/com/example/router/partner/PartnerAService.java) |
 | Call Partner B | step | Partner B | [`PartnerBService#call`](../src/main/java/com/example/router/partner/PartnerBService.java) |
 | Call Partner C | step | Partner C | [`PartnerCService#call`](../src/main/java/com/example/router/partner/PartnerCService.java) |

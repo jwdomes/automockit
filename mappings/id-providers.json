@@ -1,0 +1,24 @@
+{
+  "mappings": [
+    {
+      "priority": 10,
+      "request": { "method": "POST", "urlPath": "/new-id-provider/lookup" },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "personId": "NEW-{{jsonPath request.body '$.lastName'}}-{{jsonPath request.body '$.birthDate'}}" },
+        "transformers": ["response-template"]
+      }
+    },
+    {
+      "priority": 10,
+      "request": { "method": "POST", "urlPath": "/legacy-id-provider/lookup" },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "personId": "LEGACY-{{jsonPath request.body '$.lastName'}}-{{jsonPath request.body '$.birthDate'}}" },
+        "transformers": ["response-template"]
+      }
+    }
+  ]
+}

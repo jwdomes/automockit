@@ -2,7 +2,7 @@
 
 Partner B returns 500 after A succeeds: request fails with 502 and C is never called
 
-**Status:** 502 (expected 502) · **Called:** Partner A, Partner B
+**Status:** 502 (expected 502) · **Called:** Legacy ID Provider, Partner A, Partner B
 
 ## Request
 
@@ -48,10 +48,13 @@ sequenceDiagram
     %% Partner B returns 500 after A succeeds: request fails with 502 and C is never called
     participant UPSTREAM as Upstream
     participant ROUTER as Router
+    participant LEGACY_ID_PROVIDER as Legacy ID Provider
     participant PARTNER_A as Partner A
     participant PARTNER_B as Partner B
     UPSTREAM->>ROUTER: Receive search request
     ROUTER->>ROUTER: Determine downstream partners
+    ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
+    LEGACY_ID_PROVIDER-->>ROUTER: response
     Note over ROUTER: Partner A eligible? yes — SSN present ✓, valid passport ✓
     Note over ROUTER,PARTNER_A: Using passport FA0000006
     ROUTER->>PARTNER_A: Call Partner A
@@ -66,9 +69,37 @@ sequenceDiagram
 
 ## Downstream calls
 
-### POST /partner-a/matches → 200
+### POST /legacy-id-provider/lookup → 200
 
 Matched `stubs[0]`.
+
+<details><summary>Request sent</summary>
+
+```json
+{
+  "firstName" : "Kai",
+  "lastName" : "Ford",
+  "birthDate" : "1970-07-07",
+  "ssn" : "900000006",
+  "pNumber" : "PN900006"
+}
+```
+
+</details>
+
+<details><summary>Response returned</summary>
+
+```json
+{
+  "personId" : "LEGACY-FORD"
+}
+```
+
+</details>
+
+### POST /partner-a/matches → 200
+
+Matched `stubs[1]`.
 
 <details><summary>Request sent</summary>
 
@@ -100,7 +131,7 @@ Matched `stubs[0]`.
 
 ### POST /partner-b/matches → 500
 
-Matched `stubs[1]`.
+Matched `stubs[2]`.
 
 <details><summary>Request sent</summary>
 

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.RequestDto;
 import com.example.router.dto.ResponseDto;
+import com.example.router.idprovider.IdProviderService;
 import com.example.router.partner.PartnerAService;
 import com.example.router.partner.PartnerBService;
 import com.example.router.partner.PartnerCService;
@@ -24,7 +25,8 @@ class RouterTest {
     private final PartnerAService partnerA = mock(PartnerAService.class);
     private final PartnerBService partnerB = mock(PartnerBService.class);
     private final PartnerCService partnerC = mock(PartnerCService.class);
-    private final Router router = new Router(partnerA, partnerB, partnerC);
+    private final IdProviderService idProvider = mock(IdProviderService.class);
+    private final Router router = new Router(idProvider, false, partnerA, partnerB, partnerC);
     private final RequestDto request = request("111223333", "PN1001");
 
     @Test
@@ -61,5 +63,28 @@ class RouterTest {
         verify(partnerA, never()).call(any());
         verify(partnerB, never()).call(any());
         assertThat(response.getResults()).containsExactly(c);
+    }
+
+    @Test
+    void resolvesThePersonIdWithTheLegacyProviderByDefault() {
+        when(idProvider.lookupWithLegacy(request)).thenReturn("LEGACY-1");
+        ResponseDto response = new ResponseDto("req-1");
+
+        router.route(request, response);
+
+        assertThat(response.getPersonId()).isEqualTo("LEGACY-1");
+        verify(idProvider, never()).lookupWithNew(any());
+    }
+
+    @Test
+    void resolvesThePersonIdWithTheNewProviderWhenSwitchedOn() {
+        Router switched = new Router(idProvider, true, partnerA, partnerB, partnerC);
+        when(idProvider.lookupWithNew(request)).thenReturn("NEW-1");
+        ResponseDto response = new ResponseDto("req-1");
+
+        switched.route(request, response);
+
+        assertThat(response.getPersonId()).isEqualTo("NEW-1");
+        verify(idProvider, never()).lookupWithLegacy(any());
     }
 }

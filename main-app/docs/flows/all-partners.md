@@ -2,7 +2,7 @@
 
 SSN, PNumber, valid passport and license: A, B and C are all called
 
-**Status:** 200 (expected 200) · **Called:** Partner A, Partner B, Partner C
+**Status:** 200 (expected 200) · **Called:** Legacy ID Provider, Partner A, Partner B, Partner C
 
 ## Request
 
@@ -49,11 +49,14 @@ sequenceDiagram
     %% SSN, PNumber, valid passport and license: A, B and C are all called
     participant UPSTREAM as Upstream
     participant ROUTER as Router
+    participant LEGACY_ID_PROVIDER as Legacy ID Provider
     participant PARTNER_A as Partner A
     participant PARTNER_B as Partner B
     participant PARTNER_C as Partner C
     UPSTREAM->>ROUTER: Receive search request
     ROUTER->>ROUTER: Determine downstream partners
+    ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
+    LEGACY_ID_PROVIDER-->>ROUTER: response
     Note over ROUTER: Partner A eligible? yes — SSN present ✓, valid passport ✓
     Note over ROUTER,PARTNER_A: Using passport FA0000001
     ROUTER->>PARTNER_A: Call Partner A
@@ -70,9 +73,37 @@ sequenceDiagram
 
 ## Downstream calls
 
-### POST /partner-a/matches → 200
+### POST /legacy-id-provider/lookup → 200
 
 Matched `stubs[0]`.
+
+<details><summary>Request sent</summary>
+
+```json
+{
+  "firstName" : "Fiona",
+  "lastName" : "Ames",
+  "birthDate" : "1980-01-01",
+  "ssn" : "900000001",
+  "pNumber" : "PN900001"
+}
+```
+
+</details>
+
+<details><summary>Response returned</summary>
+
+```json
+{
+  "personId" : "LEGACY-AMES"
+}
+```
+
+</details>
+
+### POST /partner-a/matches → 200
+
+Matched `stubs[1]`.
 
 <details><summary>Request sent</summary>
 
@@ -104,7 +135,7 @@ Matched `stubs[0]`.
 
 ### POST /partner-b/matches → 200
 
-Matched `stubs[1]`.
+Matched `stubs[2]`.
 
 <details><summary>Request sent</summary>
 
@@ -142,7 +173,7 @@ Matched `stubs[1]`.
 
 ### POST /partner-c/matches → 200
 
-Matched `stubs[2]`.
+Matched `stubs[3]`.
 
 <details><summary>Request sent</summary>
 
@@ -178,6 +209,7 @@ Matched `stubs[2]`.
 ```json
 {
   "requestId" : "all-partners",
+  "personId" : "LEGACY-AMES",
   "results" : [ {
     "partner" : "PARTNER_A",
     "matches" : [ {

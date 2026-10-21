@@ -2,7 +2,7 @@
 
 SSN and valid passport but no PNumber: A and C are called, B is skipped
 
-**Status:** 200 (expected 200) · **Called:** Partner A, Partner C
+**Status:** 200 (expected 200) · **Called:** Legacy ID Provider, Partner A, Partner C
 
 ## Request
 
@@ -48,10 +48,13 @@ sequenceDiagram
     %% SSN and valid passport but no PNumber: A and C are called, B is skipped
     participant UPSTREAM as Upstream
     participant ROUTER as Router
+    participant LEGACY_ID_PROVIDER as Legacy ID Provider
     participant PARTNER_A as Partner A
     participant PARTNER_C as Partner C
     UPSTREAM->>ROUTER: Receive search request
     ROUTER->>ROUTER: Determine downstream partners
+    ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
+    LEGACY_ID_PROVIDER-->>ROUTER: response
     Note over ROUTER: Partner A eligible? yes — SSN present ✓, valid passport ✓
     Note over ROUTER,PARTNER_A: Using passport FA0000002
     ROUTER->>PARTNER_A: Call Partner A
@@ -65,9 +68,37 @@ sequenceDiagram
 
 ## Downstream calls
 
-### POST /partner-a/matches → 200
+### POST /legacy-id-provider/lookup → 200
 
 Matched `stubs[0]`.
+
+<details><summary>Request sent</summary>
+
+```json
+{
+  "firstName" : "Gil",
+  "lastName" : "Baker",
+  "birthDate" : "1975-05-05",
+  "ssn" : "900000002",
+  "pNumber" : null
+}
+```
+
+</details>
+
+<details><summary>Response returned</summary>
+
+```json
+{
+  "personId" : "LEGACY-BAKER"
+}
+```
+
+</details>
+
+### POST /partner-a/matches → 200
+
+Matched `stubs[1]`.
 
 <details><summary>Request sent</summary>
 
@@ -99,7 +130,7 @@ Matched `stubs[0]`.
 
 ### POST /partner-c/matches → 200
 
-Matched `stubs[1]`.
+Matched `stubs[2]`.
 
 <details><summary>Request sent</summary>
 
@@ -135,6 +166,7 @@ Matched `stubs[1]`.
 ```json
 {
   "requestId" : "a-and-c",
+  "personId" : "LEGACY-BAKER",
   "results" : [ {
     "partner" : "PARTNER_A",
     "matches" : [ {

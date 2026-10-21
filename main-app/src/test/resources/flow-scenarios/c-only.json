@@ -26,6 +26,29 @@
     {
       "request": {
         "method": "POST",
+        "urlPath": "/legacy-id-provider/lookup",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.lastName",
+              "equalTo": "Diaz"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "personId": "LEGACY-DIAZ"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
         "urlPath": "/partner-c/matches",
         "bodyPatterns": [
           {

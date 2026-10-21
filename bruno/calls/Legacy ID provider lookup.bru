@@ -1,0 +1,25 @@
+meta {
+  name: Legacy ID provider lookup
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/legacy-id-provider/lookup
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "firstName": "Ada",
+    "lastName": "Lovelace",
+    "birthDate": "1815-12-10",
+    "ssn": "111223333",
+    "pNumber": null
+  }
+}
+
+docs {
+  Stands in for the legacy ID provider. Any lookup returns a templated personId: LEGACY-<lastName>-<birthDate>, here LEGACY-Lovelace-1815-12-10. Priority 10, so flow-scenario stubs win.
+}
