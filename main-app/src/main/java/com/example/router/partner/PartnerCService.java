@@ -6,6 +6,7 @@ import com.example.flowdocs.FlowStep;
 import com.example.partnerclients.PartnerCClient;
 import com.example.partnerclients.PartnerCRequest;
 import com.example.router.Participants;
+import com.example.router.Steps;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.Person;
 import com.example.router.dto.PersonMatch;
@@ -23,13 +24,13 @@ public class PartnerCService {
         this.client = client;
     }
 
-    @FlowDecision(question = "Partner C eligible?", participant = Participants.ROUTER, gates = "Call Partner C",
+    @FlowDecision(question = "Partner C eligible?", participant = Participants.ROUTER, gates = Steps.CALL_PARTNER_C,
             conditions = @Condition(label = "SSN present", test = "#hasText(#request.person().ssn())"))
     public boolean shouldCall(RequestDto request) {
         return StringUtils.hasText(request.person().ssn());
     }
 
-    @FlowStep(action = "Call Partner C", participant = Participants.PARTNER_C)
+    @FlowStep(action = Steps.CALL_PARTNER_C, participant = Participants.PARTNER_C)
     public PartnerResult call(RequestDto request) {
         Person person = request.person();
         PartnerCRequest partnerRequest = new PartnerCRequest(person.last(), person.birthDate(), person.ssn());

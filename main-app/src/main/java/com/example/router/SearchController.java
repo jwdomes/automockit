@@ -18,7 +18,7 @@ public class SearchController {
     }
 
     @PostMapping("/search")
-    @FlowStep(action = "Receive search request", participant = Participants.ROUTER)
+    @FlowStep(action = Steps.RECEIVE_SEARCH_REQUEST, participant = Participants.ROUTER)
     public ResponseDto search(@Valid @RequestBody RequestDto request) {
         ResponseDto response = new ResponseDto(request.header().requestId());
         router.route(request, response);

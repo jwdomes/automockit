@@ -6,6 +6,7 @@ import com.example.flowdocs.FlowStep;
 import com.example.partnerclients.PartnerAClient;
 import com.example.partnerclients.PartnerARequest;
 import com.example.router.Participants;
+import com.example.router.Steps;
 import com.example.router.dto.DocumentType;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.Person;
@@ -24,7 +25,7 @@ public class PartnerAService {
         this.client = client;
     }
 
-    @FlowDecision(question = "Partner A eligible?", participant = Participants.ROUTER, gates = "Call Partner A",
+    @FlowDecision(question = "Partner A eligible?", participant = Participants.ROUTER, gates = Steps.CALL_PARTNER_A,
             conditions = {
                     @Condition(label = "SSN present", test = "#hasText(#request.person().ssn())"),
                     @Condition(label = "valid passport", test =
@@ -34,7 +35,7 @@ public class PartnerAService {
                 && request.firstValidNumber(DocumentType.PASSPORT).isPresent();
     }
 
-    @FlowStep(action = "Call Partner A", participant = Participants.PARTNER_A,
+    @FlowStep(action = Steps.CALL_PARTNER_A, participant = Participants.PARTNER_A,
             note = "Using passport #{#request.firstValidNumber(T(com.example.router.dto.DocumentType).PASSPORT).orElse('none')}")
     public PartnerResult call(RequestDto request) {
         Person person = request.person();

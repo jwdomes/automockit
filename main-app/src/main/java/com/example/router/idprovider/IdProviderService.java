@@ -5,6 +5,7 @@ import com.example.partnerclients.IdLookupRequest;
 import com.example.partnerclients.LegacyIdProviderClient;
 import com.example.partnerclients.NewIdProviderClient;
 import com.example.router.Participants;
+import com.example.router.Steps;
 import com.example.router.dto.Person;
 import com.example.router.dto.RequestDto;
 import org.springframework.stereotype.Service;
@@ -21,12 +22,12 @@ public class IdProviderService {
         this.legacyProvider = legacyProvider;
     }
 
-    @FlowStep(action = "Call New ID Provider", participant = Participants.NEW_ID_PROVIDER)
+    @FlowStep(action = Steps.CALL_NEW_ID_PROVIDER, participant = Participants.NEW_ID_PROVIDER)
     public String lookupWithNew(RequestDto request) {
         return newProvider.lookup(request.header().requestId(), lookupRequest(request)).personId();
     }
 
-    @FlowStep(action = "Call Legacy ID Provider", participant = Participants.LEGACY_ID_PROVIDER)
+    @FlowStep(action = Steps.CALL_LEGACY_ID_PROVIDER, participant = Participants.LEGACY_ID_PROVIDER)
     public String lookupWithLegacy(RequestDto request) {
         return legacyProvider.lookup(request.header().requestId(), lookupRequest(request)).personId();
     }

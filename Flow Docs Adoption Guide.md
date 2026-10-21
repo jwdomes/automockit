@@ -93,7 +93,7 @@ Where to set them:
 
 **Removing it later:** drop the two `flowdocs` dependencies and the annotations. Nothing else depends on it.
 
-## 4. Declare participants (app main code)
+## 4. Declare participants and step names (app main code)
 
 Participants are the systems that appear in the diagrams, such as your app and each downstream
 service. Declare each one as a constant with a label, in a class anywhere under the app's base
@@ -107,15 +107,31 @@ public final class Participants {
 }
 ```
 
+Declare step actions as constants too. A step's action is its identity, and `gates`/`otherwise`
+must match it exactly. Constants make that link a compile-time one, so a rename happens in one
+place:
+
+```java
+public final class Steps {
+    public static final String CALL_PARTNER_A = "Call Partner A";
+    public static final String MAP_PARTNER_FAILURE_TO_502 = "Map partner failure to 502";
+    private Steps() {}
+}
+```
+
+This is a convention, not a requirement. Plain strings work, and `decisionTargetsExist` still
+fails the build when a `gates` or `otherwise` names no step. Without constants, though, a rename
+means finding every reference by hand.
+
 ## 5. Annotate (app main code: add only)
 
 ```java
 // Steps: the controller method, orchestration methods, each downstream call
-@FlowStep(action = "Call Partner A", participant = Participants.PARTNER_A,
+@FlowStep(action = Steps.CALL_PARTNER_A, participant = Participants.PARTNER_A,
           note = "Using passport #{#request.documentNumber()}")          // note is optional (SpEL template)
 
-// Decisions: an existing boolean method, body unchanged
-@FlowDecision(question = "Partner A eligible?", participant = Participants.ROUTER, gates = "Call Partner A",
+// Decisions: an existing boolean method, body unchanged; gates names a step's action
+@FlowDecision(question = "Partner A eligible?", participant = Participants.ROUTER, gates = Steps.CALL_PARTNER_A,
         conditions = {
             @Condition(label = "SSN present", test = "#hasText(#request.person().ssn())"),
             @Condition(label = "valid passport",
@@ -123,12 +139,12 @@ public final class Participants {
 public boolean shouldCall(RequestDto request) { ... }
 
 // Error mappings: annotate existing @ExceptionHandler methods in a @RestControllerAdvice
-@FlowStep(action = "Map partner failure to 502", participant = Participants.ROUTER)
+@FlowStep(action = Steps.MAP_PARTNER_FAILURE_TO_502, participant = Participants.ROUTER)
 
 // Inline if/else with no method of its own: declare it on the step that contains it (repeatable)
-@FlowStep(action = "Determine downstream partners", participant = Participants.ROUTER)
+@FlowStep(action = Steps.DETERMINE_DOWNSTREAM_PARTNERS, participant = Participants.ROUTER)
 @FlowBranch(question = "Use new ID provider?", participant = Participants.ROUTER,
-        gates = "Call New ID Provider", otherwise = "Call Legacy ID Provider",
+        gates = Steps.CALL_NEW_ID_PROVIDER, otherwise = Steps.CALL_LEGACY_ID_PROVIDER,
         conditions = @Condition(label = "new provider enabled", test = "#property('id-provider.use-new') == 'true'"))
 public void route(RequestDto request, ResponseDto response) { if (useNewIdProvider) { ... } else { ... } }
 ```
@@ -192,7 +208,7 @@ If partner calls go through client interfaces from a separate repo or jar that y
 annotate, put the step on the app method that calls the client:
 
 ```java
-@FlowStep(action = "Call Partner A", participant = Participants.PARTNER_A)
+@FlowStep(action = Steps.CALL_PARTNER_A, participant = Participants.PARTNER_A)
 public PartnerResult call(RequestDto request) {
     ... partnerAClient.match(requestId, partnerRequest) ...
 }

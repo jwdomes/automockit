@@ -15,7 +15,7 @@ public class SearchExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(SearchExceptionHandler.class);
 
     @ExceptionHandler(RestClientException.class)
-    @FlowStep(action = "Map partner failure to 502", participant = Participants.ROUTER)
+    @FlowStep(action = Steps.MAP_PARTNER_FAILURE_TO_502, participant = Participants.ROUTER)
     public ProblemDetail partnerCallFailed(RestClientException e) {
         log.warn("Partner call failed", e);
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "Partner call failed");

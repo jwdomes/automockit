@@ -30,9 +30,9 @@ public class Router {
         this.partnerC = partnerC;
     }
 
-    @FlowStep(action = "Determine downstream partners", participant = Participants.ROUTER)
+    @FlowStep(action = Steps.DETERMINE_DOWNSTREAM_PARTNERS, participant = Participants.ROUTER)
     @FlowBranch(question = "Use new ID provider?", participant = Participants.ROUTER,
-            gates = "Call New ID Provider", otherwise = "Call Legacy ID Provider",
+            gates = Steps.CALL_NEW_ID_PROVIDER, otherwise = Steps.CALL_LEGACY_ID_PROVIDER,
             conditions = @Condition(label = "new provider enabled", test = "#property('id-provider.use-new') == 'true'"))
     public void route(RequestDto request, ResponseDto response) {
         if (useNewIdProvider) {

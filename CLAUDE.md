@@ -168,6 +168,9 @@ switch on Boot's HTTP observations.
 - `#property('key')` is available to every condition and note.
 - **Participants** are string ids declared as constants with `@FlowParticipant(label)`. See
   `main-app/.../Participants.java`.
+- **Step actions** are constants in `main-app/.../Steps.java`. They're used for `action`, and for
+  `gates`/`otherwise`, which must match an action exactly. A rename there renames the step in every
+  annotation and every generated doc.
 
 **Generated docs** in `main-app/docs/`. `StaticFlowDocs` writes the first two, and `ScenarioRunner`
 writes the per-scenario files:
