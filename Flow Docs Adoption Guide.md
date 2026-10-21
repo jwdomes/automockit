@@ -1,0 +1,271 @@
+# Flow Docs: Adoption Guide
+
+How to add the flow-docs framework from this repo to another Spring Boot 4 / Java / Gradle (Groovy)
+project. You copy one Gradle project and add annotations, a few test classes and some config. The
+app's functional code doesn't change.
+
+**Requirements**
+- Spring Boot 4.x, Spring MVC, Java 21 (or change the toolchain lines)
+- Gradle with the Spring Boot plugin
+- WireMock 3.13.x, which the `flowdocs` test fixtures bring in
+
+## 1. Copy the library
+
+Copy the `flowdocs/` directory from this repo to the root of the target project, unchanged. Leave out
+its `build/` directory.
+
+| Folder | Contents | Reaches the app's |
+| --- | --- | --- |
+| `flowdocs/src/main/` | Annotations (`com.example.flowdocs`) and runtime (`.boot`), plus the auto-configuration registration in `resources/META-INF/spring/` | main classpath. Inert unless enabled. |
+| `flowdocs/src/testFixtures/` | Test support (`.test`): recorder, renderers, static graph, scenario runner, rules | test classpath only |
+| `flowdocs/src/test/` | The library's own tests | nothing (optional to copy) |
+
+**Renaming the package.** If you rename `com.example.flowdocs`, also update the single line in
+`flowdocs/src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+
+## 2. Gradle wiring
+
+**`settings.gradle`:**
+
+```groovy
+include 'flowdocs'
+```
+
+**Root `build.gradle`.** `flowdocs/build.gradle` references the Boot BOM through the Boot plugin
+class, and it relies on the root build for repositories and JUnit. If the root project isn't
+already applying the Boot plugin, add this:
+
+```groovy
+plugins {
+    id 'org.springframework.boot' version '4.0.8' apply false   // match your Boot version
+}
+
+subprojects {
+    repositories { mavenCentral() }
+    tasks.withType(Test).configureEach { useJUnitPlatform() }
+}
+```
+
+If you'd rather not touch the root build, add `repositories { mavenCentral() }` and
+`tasks.withType(Test).configureEach { useJUnitPlatform() }` to `flowdocs/build.gradle` instead.
+
+**App module `build.gradle`:**
+
+```groovy
+dependencies {
+    implementation project(':flowdocs')
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'      // provides ObservationRegistry; see below
+
+    testImplementation testFixtures(project(':flowdocs'))                        // test support only
+    testImplementation 'org.springframework.boot:spring-boot-webmvc-test'       // @AutoConfigureMockMvc
+}
+
+tasks.named('test') {
+    systemProperty 'updateFlowDocs', providers.gradleProperty('updateFlowDocs').isPresent()
+    inputs.files(fileTree('docs') { include '**/*.mmd' })
+}
+```
+
+- **Actuator.** When flow observations are enabled, the library needs an `ObservationRegistry`
+  bean, and startup fails without one. Actuator provides it, and so does
+  `org.springframework.boot:spring-boot-micrometer-observation` on its own. The library
+  deliberately doesn't pull either in.
+- **`-parameters`.** The Boot Gradle plugin compiles with `-parameters`, which lets expressions
+  refer to arguments as `#name`. Without the plugin, add
+  `tasks.withType(JavaCompile).configureEach { options.compilerArgs.add('-parameters') }`.
+
+**Repo root `.gitattributes`:** add `*.mmd text eol=lf`.
+
+## 3. Turning it on and off
+
+| Property | Default | Effect |
+| --- | --- | --- |
+| `flow.observations.enabled` | unset (off) | Off: the library registers no beans, proxies or expression parsers, so the annotations are inert metadata. On: annotated methods are recorded as `flow.step` observations. |
+| `flow.observations.strict` | `false` | `true`: a decision whose conditions disagree with its return value, or a broken expression, throws. Use this in tests only. `false`: logs a warning instead. |
+
+Where to set them:
+
+| Environment | Setting |
+| --- | --- |
+| **Production** | Set nothing. |
+| **Tests** | In the scenario test's `@SpringBootTest(properties = ...)`, as in section 6. Nothing goes in `application.yml`. |
+| **Perf/load environment** (optional) | `flow.observations.enabled=true`, plus `management.endpoints.web.exposure.include=health,metrics` to read the timers. |
+
+**Removing it later:** drop the two `flowdocs` dependencies and the annotations. Nothing else depends on it.
+
+## 4. Declare participants (app main code)
+
+Participants are the systems that appear in the diagrams, such as your app and each downstream
+service. Declare each one as a constant with a label, in a class anywhere under the app's base
+package:
+
+```java
+public final class Participants {
+    @FlowParticipant(label = "Router")    public static final String ROUTER = "ROUTER";
+    @FlowParticipant(label = "Partner A") public static final String PARTNER_A = "PARTNER_A";
+    private Participants() {}
+}
+```
+
+## 5. Annotate (app main code: add only)
+
+```java
+// Steps: the controller method, orchestration methods, each downstream call
+@FlowStep(action = "Call Partner A", participant = Participants.PARTNER_A,
+          note = "Using passport #{#request.documentNumber()}")          // note is optional (SpEL template)
+
+// Decisions: an existing boolean method, body unchanged
+@FlowDecision(question = "Partner A eligible?", participant = Participants.ROUTER, gates = "Call Partner A",
+        conditions = {
+            @Condition(label = "SSN present", test = "#hasText(#request.person().ssn())"),
+            @Condition(label = "valid passport",
+                       test = "#request.firstValidNumber(T(com.acme.DocumentType).PASSPORT).isPresent()")})
+public boolean shouldCall(RequestDto request) { ... }
+
+// Error mappings: annotate existing @ExceptionHandler methods in a @RestControllerAdvice
+@FlowStep(action = "Map partner failure to 502", participant = Participants.ROUTER)
+```
+
+These rules are enforced at build time by `FlowDocsRules`:
+
+- **Downstream calls are steps.** Any method that calls `RestClient`, `RestTemplate` or `WebClient`
+  must be a `@FlowStep`.
+- **Proxyable.** Steps and decisions are public or package-visible, not `final` or `static`, and
+  not called from their own class.
+- **Decisions:**
+  - return `boolean`
+  - `gates` names an existing step action
+  - are called directly from a `@FlowStep` method, which is how the graph orders them
+- **Unique names.** Actions and questions are unique.
+- **Declared participants.** Every participant id is declared.
+- **Valid expressions.** Every expression parses.
+
+Not enforced, but required: conditions are ANDed and all of them are evaluated, so each one must be
+safe to run when an earlier one is false (null-safe, no side effects).
+
+## 6. Test wiring (app `src/test/java`)
+
+Create these classes in any test package. Replace the `com.acme.app` package, the WireMock property
+names and the paths with your own.
+
+```java
+// Settings shared by the docs tests. Defaults: docs/ and src/test/resources/flow-scenarios/
+final class AppFlowDocs {
+    static final FlowDocsSettings SETTINGS = FlowDocsSettings.of("com.acme.app", Participants.ROUTER);
+}
+
+// Static graph + index: writes docs/flow.mmd and docs/README.md
+class FlowDocsTest {
+    @Test void flowDocsAreCurrent() throws Exception { StaticFlowDocs.verify(AppFlowDocs.SETTINGS); }
+}
+
+// Annotation rules
+@AnalyzeClasses(packages = "com.acme.app", importOptions = ImportOption.DoNotIncludeTests.class)
+class FlowDocsRulesTest {
+    @ArchTest static final ArchTests flowDocs = ArchTests.in(FlowDocsRules.class);
+}
+
+// Scenarios: writes docs/flows/<name>.mmd and .md
+@SpringBootTest(properties = {"flow.observations.enabled=true", "flow.observations.strict=true"})
+@AutoConfigureMockMvc
+@Import(FlowRecorderConfiguration.class)
+class FlowScenarioDocsTest {
+
+    @RegisterExtension
+    static WireMockExtension downstream = WireMockExtension.newInstance()
+            .options(wireMockConfig().dynamicPort().http2PlainDisabled(true))   // required, see below
+            .build();
+
+    private static final ScenarioRunner RUNNER = new ScenarioRunner(AppFlowDocs.SETTINGS, downstream);
+
+    @DynamicPropertySource
+    static void downstreamUrls(DynamicPropertyRegistry registry) {
+        registry.add("partners.a.base-url", () -> downstream.baseUrl() + "/partner-a");   // your properties
+    }
+
+    @Autowired MockMvc mvc;
+    @Autowired FlowRecorder recorder;
+
+    static Stream<String> scenarios() throws IOException { return Scenario.names(AppFlowDocs.SETTINGS.scenariosDir()); }
+
+    @ParameterizedTest(name = "{0}") @MethodSource("scenarios")
+    void scenario(String name) throws Exception { RUNNER.run(name, mvc, recorder); }
+}
+```
+
+- **`http2PlainDisabled(true)` is required.** Spring's `RestClient` uses the JDK HttpClient, which
+  tries an h2c upgrade (HTTP/2 over plain HTTP). WireMock's Jetty resets that connection.
+- **Optional prod-neutral check.** A test that boots without the property and asserts that a
+  `@FlowStep` bean isn't proxied:
+  `assertThat(AopUtils.isAopProxy(someClient)).isFalse()`. See `FlowObservationsOffTest` in this
+  repo.
+
+## 7. Scenarios (app `src/test/resources/flow-scenarios/<name>.json`)
+
+```json
+{
+  "description": "One line, shown on the page and in the diagram",
+  "method": "POST",
+  "path": "/search",
+  "request": { "...": "body sent to the app" },
+  "expectedStatus": 200,
+  "stubs": [ { "request": { "...": "standard WireMock mapping" },
+               "response": { "status": 200, "headers": { "Content-Type": "application/json" }, "jsonBody": {} } } ]
+}
+```
+
+- **Unique keys.** Give each scenario a unique key, such as an id in the downstream request body,
+  and match on it with `bodyPatterns`. This keeps stubs from overlapping when Gatling loads them
+  all at once.
+- **Content type.** Stub responses need `Content-Type: application/json`, or `RestClient` can't
+  read them.
+- **No random delays,** so the diagrams stay the same on every run.
+
+## 8. Generate and commit docs
+
+```bash
+./gradlew test -PupdateFlowDocs     # writes <app>/docs/; the first plain build fails until this has run
+git add <app>/docs && git commit
+```
+
+After that:
+- `./gradlew build` fails whenever a committed doc is stale.
+- Regenerate after intentional flow changes, and review the diffs in the PR.
+
+Output in `<app>/docs/`:
+
+| File | Contents |
+| --- | --- |
+| `flow.mmd` | Static graph |
+| `README.md` | Graph, steps and decisions, scenarios |
+| `flows/<name>.mmd` | Sequence diagram |
+| `flows/<name>.md` | Request, decisions, diagram, downstream calls, response |
+
+## 9. Optional: Gatling load test
+
+Copy these from `main-app`:
+
+| From | To |
+| --- | --- |
+| `src/gatling/java/com/example/router/FlowScenariosSimulation.java` | `<app>/src/gatling/java/<your package>/` |
+| `src/gatling/resources/logback.xml` | `<app>/src/gatling/resources/` |
+| `src/main/resources/application-wiremock.yml` | `<app>/src/main/resources/`, pointing your downstream base URLs at the WireMock host |
+
+Then:
+
+- Add `id 'io.gatling.gradle' version '3.16.0'` to the app's `plugins` block.
+- Run WireMock with `--disable-http2-plain`. In a container, that's `CMD ["--disable-http2-plain"]`
+  in its Dockerfile.
+- Run the load test:
+  1. Start the app with `--spring.profiles.active=wiremock --flow.observations.enabled=true`.
+  2. Run `./gradlew :<app>:gatlingRun`, setting `APP_URL`, `WIREMOCK_URL`, `PARTNER_DELAY_MS`,
+     `PEAK_USERS_PER_SEC` and `RAMP_SECONDS` as needed.
+  3. Read per-step timings from `/actuator/metrics/flow.step`. It's tagged with `flow.step`,
+     `flow.participant`, `flow.kind` and `flow.outcome`.
+
+## Limits
+
+- **Spring MVC only.** WebFlux would need context propagation to keep steps nested across threads.
+- **MockMvc doesn't render the servlet container's error page,** so a request rejected before the
+  controller shows an empty body on its scenario page.
+- **Boot 4 / Jackson 3.** The test module reads scenarios with `tools.jackson`.

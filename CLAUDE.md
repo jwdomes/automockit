@@ -24,9 +24,10 @@ bruno/            Bruno collection (open this folder in Bruno, pick the "local" 
   environments/   local.bru -> baseUrl http://localhost:8080 (WireMock), appUrl http://localhost:8090
 compose.yaml      Postgres 17 on localhost:5442 (5432 is taken by another project here)
 docker/           init script creating partner_a, partner_b, partner_c databases
-flowdocs-annotations/   @FlowStep, @FlowDecision, @Condition, @FlowParticipant (no dependencies)
-flowdocs-spring-boot/   runtime: auto-configuration + interceptor, inert unless enabled
-flowdocs-test/          test support: recorder, renderers, static graph, scenario runner, rules
+flowdocs/         flow-docs library, one Gradle project:
+  src/main/            annotations (com.example.flowdocs) + runtime (.boot): inert unless enabled
+  src/testFixtures/    test support (.test): recorder, renderers, graph, scenario runner, rules
+  src/test/            the library's own tests
 main-app/         router, com.example.router, port 8090; flow docs in main-app/docs/
 partner-a/        com.example.partner.a, port 8091, POST /partner-a/matches
 partner-b/        com.example.partner.b, port 8092, POST /partner-b/matches
@@ -104,10 +105,17 @@ Rebuild, start the container, and curl each affected endpoint (and `/__admin/map
 loaded count) before calling a change done. The Bruno CLI (`bru`) is not installed; the desktop
 app is.
 
-## Flow docs (flowdocs-* modules, used by main-app)
+## Flow docs (flowdocs/, used by main-app)
 
 A library, kept in this repo for now, that generates flow docs from annotations. It's written to be
-added to any Spring Boot 4 app. Two rules shape it:
+added to any Spring Boot 4 app; `Flow Docs Adoption Guide.md` says how.
+
+Apps depend on it with `implementation project(':flowdocs')` and
+`testImplementation testFixtures(project(':flowdocs'))`. The test support uses Gradle's
+`java-test-fixtures` plugin, so its dependencies (ArchUnit, WireMock, JUnit) never reach an app's
+main classpath.
+
+Two rules shape it:
 
 - **Add-only.** Apps gain annotations and nothing else. Functional code is never changed for the
   docs. `git diff 3525edb -- main-app/src/main` shows only annotations, imports, `Participants`
