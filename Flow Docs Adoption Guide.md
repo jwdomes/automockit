@@ -136,12 +136,16 @@ These rules are enforced at build time by `FlowDocsRules`:
   - return `boolean`
   - `gates` names an existing step action
   - are called directly from a `@FlowStep` method, which is how the graph orders them
+  - the calling step can reach the gated step
 - **Unique names.** Actions and questions are unique.
 - **Declared participants.** Every participant id is declared.
 - **Valid expressions.** Every expression parses.
 
 Not enforced, but required: conditions are ANDed and all of them are evaluated, so each one must be
 safe to run when an earlier one is false (null-safe, no side effects).
+
+At test time, each scenario also fails if a gated step ran after its decision said no, or ran
+without its decision being made.
 
 ## 6. Test wiring (app `src/test/java`)
 

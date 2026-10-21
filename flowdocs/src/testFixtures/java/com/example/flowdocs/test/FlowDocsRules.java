@@ -91,6 +91,30 @@ public final class FlowDocsRules {
         assertTrue(missing.isEmpty(), "@FlowDecision gates a step that doesn't exist: " + missing);
     }
 
+    /**
+     * The step that asks a decision must also be able to reach the step it gates. Catches a gates value
+     * pointing at a step on an unrelated path; GateCheck covers what actually runs.
+     */
+    @ArchTest
+    public static void gatedStepsAreReachable(JavaClasses classes) {
+        FlowGraph graph = new FlowGraph(classes, "", Map.of());
+        List<String> unreachable = new ArrayList<>();
+        classes.stream()
+                .flatMap(c -> c.getMethods().stream())
+                .filter(m -> m.isAnnotatedWith(FlowDecision.class))
+                .forEach(decision -> {
+                    String gates = decision.getAnnotationOfType(FlowDecision.class).gates();
+                    decision.getCallsOfSelf().stream()
+                            .map(call -> call.getOrigin())
+                            .filter(origin -> origin instanceof JavaMethod && origin.isAnnotatedWith(FlowStep.class))
+                            .map(JavaMethod.class::cast)
+                            .filter(caller -> !graph.reaches(caller, FlowIds.slug(gates)))
+                            .forEach(caller -> unreachable.add("%s gates \"%s\", which %s never reaches".formatted(
+                                    decision.getFullName(), gates, caller.getFullName())));
+                });
+        assertTrue(unreachable.isEmpty(), "Gated steps not reachable from the deciding step: " + unreachable);
+    }
+
     @ArchTest
     public static void participantsAreDeclared(JavaClasses classes) {
         Map<String, List<String>> declared = new TreeMap<>();

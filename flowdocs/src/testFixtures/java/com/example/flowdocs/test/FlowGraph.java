@@ -175,6 +175,11 @@ public final class FlowGraph {
                 .toList();
     }
 
+    /** Whether {@code from} reaches the step {@code stepId}, directly or through unannotated helpers. */
+    boolean reaches(JavaMethod from, String stepId) {
+        return reachable(from).stream().anyMatch(n -> n.kind() == Kind.STEP && n.id().equals(stepId));
+    }
+
     /** Follow calls through unannotated helpers until reaching other steps or decisions. */
     private Set<Node> reachable(JavaMethod start) {
         Set<Node> found = new HashSet<>();

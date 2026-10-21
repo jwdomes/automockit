@@ -174,6 +174,13 @@ change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
 - names are unique
 - steps and decisions aren't private, final or static, and aren't called from their own class
 - decisions return boolean, `gates` an existing step, and are called only from steps
+- the step that calls a decision can reach the step it gates (`gatedStepsAreReachable`)
+
+**Gate check.** `ScenarioRunner` also fails a scenario if a gated step ran after its decision said
+no, or ran without its decision being made. It checks this before the status, so the cause is
+reported rather than the resulting 502. The static graph's yes-edges come from `gates` and are
+taken on trust, so this check is what holds them to what the code actually does, on every path a
+scenario exercises.
 - every participant id is declared
 - every note and condition expression parses
 

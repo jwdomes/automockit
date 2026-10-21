@@ -1,9 +1,11 @@
 package com.example.flowdocs.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
+import com.tngtech.archunit.core.domain.JavaClasses;
 import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import java.util.ArrayList;
@@ -19,9 +21,10 @@ import org.springframework.test.web.servlet.MvcResult;
 import tools.jackson.databind.JsonNode;
 
 /**
- * Runs one scenario against the app with its stubs loaded into WireMock, checks the status, and
- * snapshots flows/<name>.mmd and flows/<name>.md. Create once per test class; call {@link #run} from a
- * parameterized test whose context has flow.observations.enabled=true and {@link FlowRecorderConfiguration}.
+ * Runs one scenario against the app with its stubs loaded into WireMock, checks the status and the
+ * declared gates (see {@link GateCheck}), and snapshots flows/<name>.mmd and flows/<name>.md. Create once
+ * per test class; call {@link #run} from a parameterized test whose context has
+ * flow.observations.enabled=true and {@link FlowRecorderConfiguration}.
  */
 public class ScenarioRunner {
 
@@ -29,13 +32,16 @@ public class ScenarioRunner {
     private final WireMockExtension wireMock;
     private final SequenceDiagramRenderer diagrams;
     private final ScenarioMarkdown pages;
+    private final GateCheck gates;
 
     public ScenarioRunner(FlowDocsSettings settings, WireMockExtension wireMock) {
         this.settings = settings;
         this.wireMock = wireMock;
-        Map<String, String> labels = FlowParticipants.labels(settings.importClasses());
+        JavaClasses classes = settings.importClasses();
+        Map<String, String> labels = FlowParticipants.labels(classes);
         this.diagrams = new SequenceDiagramRenderer(labels, settings);
         this.pages = new ScenarioMarkdown(labels);
+        this.gates = new GateCheck(new FlowGraph(classes, settings.basePackage(), labels));
     }
 
     public void run(String name, MockMvc mvc, FlowRecorder recorder) throws Exception {
@@ -55,9 +61,12 @@ public class ScenarioRunner {
                         .content(scenario.request().toString()))
                 .andReturn();
         MockHttpServletResponse response = result.getResponse();
-        assertEquals(scenario.expectedStatus(), response.getStatus(), "Status for scenario " + name);
 
+        // Gates first: a skipped decision usually also changes the status, and this names the cause.
         List<FlowRecorder.Step> roots = recorder.roots();
+        List<String> gateViolations = gates.violations(roots);
+        assertTrue(gateViolations.isEmpty(), "Scenario " + name + " broke a declared gate: " + gateViolations);
+        assertEquals(scenario.expectedStatus(), response.getStatus(), "Status for scenario " + name);
         String diagram = diagrams.render(roots, response.getStatus(),
                         scenario.method() + " " + scenario.path(), result.getResolvedException())
                 .replaceFirst("\n", "\n    %% " + scenario.description() + "\n");
