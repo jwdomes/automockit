@@ -1,4 +1,4 @@
-package com.example.router.client;
+package com.example.partnerclients;
 
 import java.time.LocalDate;
 

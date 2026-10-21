@@ -11,12 +11,14 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.domain.JavaModifier;
+import com.tngtech.archunit.core.domain.PackageMatcher;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,7 +42,20 @@ public final class FlowDocsRules {
     /** A downstream call that isn't a step would be missing from every diagram. */
     @ArchTest
     public static final ArchRule httpCallsAreSteps =
-            methods().that(callAnHttpClient()).should().beAnnotatedWith(FlowStep.class);
+            methods().that(callAnHttpClient()).should().beAnnotatedWith(FlowStep.class)
+                    .allowEmptyShould(true);   // apps whose HTTP calls all live in a client library have none
+
+    /**
+     * Calls to downstream client interfaces the app doesn't annotate (e.g. a client library) must be made from
+     * a step, so every call shows in the diagrams. Only interface methods count: reading the client's data
+     * types isn't a call. Not an {@code @ArchTest} itself, since only the app knows its client packages; add
+     * it as {@code @ArchTest static final ArchRule clients = downstreamCallsAreSteps("com.acme.clients..");}
+     *
+     * @param packages ArchUnit package patterns, e.g. {@code "com.acme.clients.."}
+     */
+    public static ArchRule downstreamCallsAreSteps(String... packages) {
+        return methods().that(callAnInterfaceIn(packages)).should().beAnnotatedWith(FlowStep.class);
+    }
 
     @ArchTest
     public static final ArchRule flowMethodsAreProxyable =
@@ -158,6 +173,14 @@ public final class FlowDocsRules {
         return DescribedPredicate.describe("call RestClient, RestTemplate or WebClient", method ->
                 method.getMethodCallsFromSelf().stream()
                         .anyMatch(call -> HTTP_CLIENTS.contains(call.getTargetOwner().getName().split("\\$")[0])));
+    }
+
+    private static DescribedPredicate<JavaMethod> callAnInterfaceIn(String... packages) {
+        return DescribedPredicate.describe("call an interface in " + String.join(", ", packages), method ->
+                method.getMethodCallsFromSelf().stream()
+                        .filter(call -> call.getTargetOwner().isInterface())
+                        .anyMatch(call -> Arrays.stream(packages)
+                                .anyMatch(p -> PackageMatcher.of(p).matches(call.getTargetOwner().getPackageName()))));
     }
 
     private static ArchCondition<JavaMethod> notBeCalledFromOwnClass() {

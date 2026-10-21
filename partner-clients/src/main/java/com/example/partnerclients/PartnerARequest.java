@@ -1,4 +1,4 @@
-package com.example.router.client;
+package com.example.partnerclients;
 
 public record PartnerARequest(String firstName, String lastName, String documentNumber, String personId) {
 }

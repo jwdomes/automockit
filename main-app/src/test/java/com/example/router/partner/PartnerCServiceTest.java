@@ -7,9 +7,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.router.client.PartnerCClient;
-import com.example.router.client.PartnerCRequest;
-import com.example.router.client.PartnerMatchResponse;
+import com.example.partnerclients.PartnerCClient;
+import com.example.partnerclients.PartnerCRequest;
+import com.example.partnerclients.PartnerMatchResponse;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;

@@ -21,4 +21,12 @@ class FlowDocsRulesTest {
                 new ClassFileImporter().importPackages("com.example.flowdocs.test.badgate")))
                 .hasMessageContaining("gates \"Elsewhere\", which com.example.flowdocs.test.badgate.BadGate.ask(java.lang.String) never reaches");
     }
+
+    @Test
+    void unannotatedCallsToClientInterfacesFailButReadingClientDataDoesNot() {
+        assertThatThrownBy(() -> FlowDocsRules.downstreamCallsAreSteps("com.example.flowdocs.test.clientcall.client..")
+                .check(new ClassFileImporter().importPackages("com.example.flowdocs.test.clientcall")))
+                .hasMessageContaining("was violated (1 times)")
+                .hasMessageContaining("Caller.fetchUnannotated()");
+    }
 }

@@ -7,7 +7,7 @@ import com.example.flowdocs.test.FlowRecorder;
 import com.example.flowdocs.test.FlowRecorderConfiguration;
 import com.example.flowdocs.test.Scenario;
 import com.example.flowdocs.test.ScenarioRunner;
-import com.example.router.client.PartnerAClient;
+import com.example.router.partner.PartnerAService;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import java.io.IOException;
 import java.util.stream.Stream;
@@ -51,7 +51,7 @@ class FlowScenarioDocsTest {
     FlowRecorder recorder;
 
     @Autowired
-    PartnerAClient partnerAClient;
+    PartnerAService partnerAService;
 
     static Stream<String> scenarios() throws IOException {
         return Scenario.names(RouterFlowDocs.SETTINGS.scenariosDir());
@@ -65,6 +65,6 @@ class FlowScenarioDocsTest {
 
     @Test
     void stepsAreProxiedWhenObservationsAreEnabled() {
-        assertThat(AopUtils.isAopProxy(partnerAClient)).isTrue();
+        assertThat(AopUtils.isAopProxy(partnerAService)).isTrue();
     }
 }

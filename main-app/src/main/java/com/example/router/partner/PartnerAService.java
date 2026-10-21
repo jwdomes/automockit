@@ -2,13 +2,16 @@ package com.example.router.partner;
 
 import com.example.flowdocs.Condition;
 import com.example.flowdocs.FlowDecision;
+import com.example.flowdocs.FlowStep;
+import com.example.partnerclients.PartnerAClient;
+import com.example.partnerclients.PartnerARequest;
 import com.example.router.Participants;
-import com.example.router.client.PartnerAClient;
-import com.example.router.client.PartnerARequest;
 import com.example.router.dto.DocumentType;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.Person;
+import com.example.router.dto.PersonMatch;
 import com.example.router.dto.RequestDto;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -31,6 +34,8 @@ public class PartnerAService {
                 && request.firstValidNumber(DocumentType.PASSPORT).isPresent();
     }
 
+    @FlowStep(action = "Call Partner A", participant = Participants.PARTNER_A,
+            note = "Using passport #{#request.firstValidNumber(T(com.example.router.dto.DocumentType).PASSPORT).orElse('none')}")
     public PartnerResult call(RequestDto request) {
         Person person = request.person();
         PartnerARequest partnerRequest = new PartnerARequest(
@@ -38,6 +43,9 @@ public class PartnerAService {
                 person.last(),
                 request.firstValidNumber(DocumentType.PASSPORT).orElseThrow(),
                 person.ssn());
-        return new PartnerResult("PARTNER_A", client.match(request.header().requestId(), partnerRequest).matches());
+        List<PersonMatch> matches = client.match(request.header().requestId(), partnerRequest).matches().stream()
+                .map(PersonMatch::from)
+                .toList();
+        return new PartnerResult("PARTNER_A", matches);
     }
 }

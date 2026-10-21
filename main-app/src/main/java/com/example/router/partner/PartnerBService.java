@@ -2,13 +2,16 @@ package com.example.router.partner;
 
 import com.example.flowdocs.Condition;
 import com.example.flowdocs.FlowDecision;
+import com.example.flowdocs.FlowStep;
+import com.example.partnerclients.PartnerBClient;
+import com.example.partnerclients.PartnerBRequest;
 import com.example.router.Participants;
-import com.example.router.client.PartnerBClient;
-import com.example.router.client.PartnerBRequest;
 import com.example.router.dto.DocumentType;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.Person;
+import com.example.router.dto.PersonMatch;
 import com.example.router.dto.RequestDto;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -31,6 +34,8 @@ public class PartnerBService {
                 && request.firstValidNumber(DocumentType.DRIVER_LICENSE).isPresent();
     }
 
+    @FlowStep(action = "Call Partner B", participant = Participants.PARTNER_B,
+            note = "Using driver license #{#request.firstValidNumber(T(com.example.router.dto.DocumentType).DRIVER_LICENSE).orElse('none')}")
     public PartnerResult call(RequestDto request) {
         Person person = request.person();
         PartnerBRequest partnerRequest = new PartnerBRequest(
@@ -39,6 +44,9 @@ public class PartnerBService {
                 person.birthDate(),
                 request.firstValidNumber(DocumentType.DRIVER_LICENSE).orElseThrow(),
                 person.pNumber());
-        return new PartnerResult("PARTNER_B", client.match(request.header().requestId(), partnerRequest).matches());
+        List<PersonMatch> matches = client.match(request.header().requestId(), partnerRequest).matches().stream()
+                .map(PersonMatch::from)
+                .toList();
+        return new PartnerResult("PARTNER_B", matches);
     }
 }

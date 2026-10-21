@@ -52,9 +52,9 @@ flowchart TD
 
 | Name | Kind | Participant | Code |
 | --- | --- | --- | --- |
-| Call Partner A | step | Partner A | [`PartnerAClient#match`](../src/main/java/com/example/router/client/PartnerAClient.java) |
-| Call Partner B | step | Partner B | [`PartnerBClient#match`](../src/main/java/com/example/router/client/PartnerBClient.java) |
-| Call Partner C | step | Partner C | [`PartnerCClient#match`](../src/main/java/com/example/router/client/PartnerCClient.java) |
+| Call Partner A | step | Partner A | [`PartnerAService#call`](../src/main/java/com/example/router/partner/PartnerAService.java) |
+| Call Partner B | step | Partner B | [`PartnerBService#call`](../src/main/java/com/example/router/partner/PartnerBService.java) |
+| Call Partner C | step | Partner C | [`PartnerCService#call`](../src/main/java/com/example/router/partner/PartnerCService.java) |
 | Determine downstream partners | step | Router | [`Router#route`](../src/main/java/com/example/router/Router.java) |
 | Map partner failure to 502 | step | Router | [`SearchExceptionHandler#partnerCallFailed`](../src/main/java/com/example/router/SearchExceptionHandler.java) |
 | Partner A eligible? | decision | Router | [`PartnerAService#shouldCall`](../src/main/java/com/example/router/partner/PartnerAService.java) |

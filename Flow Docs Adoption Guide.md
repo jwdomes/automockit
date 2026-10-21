@@ -129,7 +129,7 @@ public boolean shouldCall(RequestDto request) { ... }
 These rules are enforced at build time by `FlowDocsRules`:
 
 - **Downstream calls are steps.** Any method that calls `RestClient`, `RestTemplate` or `WebClient`
-  must be a `@FlowStep`.
+  must be a `@FlowStep`. Matching nothing is fine.
 - **Proxyable.** Steps and decisions are public or package-visible, not `final` or `static`, and
   not called from their own class.
 - **Decisions:**
@@ -146,6 +146,25 @@ safe to run when an earlier one is false (null-safe, no side effects).
 
 At test time, each scenario also fails if a gated step ran after its decision said no, or ran
 without its decision being made.
+
+### Downstream calls through a client library
+
+If partner calls go through client interfaces from a separate repo or jar that you don't
+annotate, put the step on the app method that calls the client:
+
+```java
+@FlowStep(action = "Call Partner A", participant = Participants.PARTNER_A)
+public PartnerResult call(RequestDto request) {
+    ... partnerAClient.match(requestId, partnerRequest) ...
+}
+```
+
+- Leave the client library alone. It never needs a flowdocs dependency.
+- Add `downstreamCallsAreSteps` with the client packages to the rules test (section 6). It requires
+  every app method that calls a client interface to be a step. Reading the client's data types
+  doesn't count.
+- The step's timing includes the app's request mapping, which is normally negligible.
+- Point `gates` at this step's action.
 
 ## 6. Test wiring (app `src/test/java`)
 
@@ -167,6 +186,9 @@ class FlowDocsTest {
 @AnalyzeClasses(packages = "com.acme.app", importOptions = ImportOption.DoNotIncludeTests.class)
 class FlowDocsRulesTest {
     @ArchTest static final ArchTests flowDocs = ArchTests.in(FlowDocsRules.class);
+
+    // Only if downstream calls go through client interfaces you don't annotate (see section 5)
+    @ArchTest static final ArchRule clients = FlowDocsRules.downstreamCallsAreSteps("com.acme.clients..");
 }
 
 // Scenarios: writes docs/flows/<name>.mmd and .md

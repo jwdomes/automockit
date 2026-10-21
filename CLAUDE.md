@@ -28,6 +28,8 @@ flowdocs/         flow-docs library, one Gradle project:
   src/main/            annotations (com.example.flowdocs) + runtime (.boot): inert unless enabled
   src/testFixtures/    test support (.test): recorder, renderers, graph, scenario runner, rules
   src/test/            the library's own tests
+partner-clients/  stand-in for the separate client repo: PartnerXClient interfaces + RestClient
+                  implementations (com.example.partnerclients), wired by auto-configuration
 main-app/         router, com.example.router, port 8090; flow docs in main-app/docs/
 partner-a/        com.example.partner.a, port 8091, POST /partner-a/matches
 partner-b/        com.example.partner.b, port 8092, POST /partner-b/matches
@@ -38,7 +40,7 @@ partner-c/        com.example.partner.c, port 8093, POST /partner-c/matches
 
 `POST /search` takes `{header, documents[], person}`. `SearchController` creates a `ResponseDto`,
 and `Router` runs A, B, then C. For each partner, its `PartnerXService.shouldCall` decides whether
-to call it, and `PartnerXClient` makes the call.
+to call it, and `PartnerXService.call` makes the call through the `PartnerXClient` interface.
 
 | Partner | Called when | Sent |
 | --- | --- | --- |
@@ -53,6 +55,12 @@ to call it, and `PartnerXClient` makes the call.
   matches, highest first. Ties are broken by name so the order is deterministic.
 - Seed data lives in each partner's `db/migration/V2__seed.sql` (Flyway).
 - There is deliberately no shared module, because each partner owns its contract.
+- **Client code.** The clients live in `partner-clients`, mirroring the enterprise setup:
+  - Client interfaces and implementations sit together in a separate repo the team owns. The
+    partners own their APIs.
+  - main-app only sees the interfaces and converts `PartnerMatch` into its own `PersonMatch`.
+  - `PartnerClientsAutoConfiguration` registers one client per partner at `partners.x.base-url`.
+  - The module has no flowdocs dependency.
 
 ## Running
 
@@ -170,7 +178,11 @@ change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
 - Don't use random delays.
 
 **Rules** (`FlowDocsRules`, included by `FlowDocsRulesTest`):
-- methods calling `RestClient`, `RestTemplate` or `WebClient` must be steps
+- methods calling `RestClient`, `RestTemplate` or `WebClient` must be steps. It's allowed to match
+  nothing, which is the case in main-app: its calls go through `partner-clients`.
+- `downstreamCallsAreSteps("com.example.partnerclients..")` is added by `FlowDocsRulesTest`. App
+  methods that call a client interface must be steps. That's why "Call Partner X" sits on
+  `PartnerXService.call`: the client repo isn't annotated.
 - names are unique
 - steps and decisions aren't private, final or static, and aren't called from their own class
 - decisions return boolean, `gates` an existing step, and are called only from steps

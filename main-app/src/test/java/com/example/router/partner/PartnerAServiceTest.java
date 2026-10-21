@@ -8,9 +8,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.example.router.client.PartnerAClient;
-import com.example.router.client.PartnerARequest;
-import com.example.router.client.PartnerMatchResponse;
+import com.example.partnerclients.PartnerAClient;
+import com.example.partnerclients.PartnerARequest;
+import com.example.partnerclients.PartnerMatchResponse;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
