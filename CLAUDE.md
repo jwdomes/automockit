@@ -14,7 +14,7 @@ changing how stubs are structured.
 ## Layout
 
 ```
-Dockerfile        wiremock/wiremock:3.13.1 with mappings/ baked in, --verbose logging
+Dockerfile        wiremock/wiremock:3.13.1 with mappings/ baked in, --verbose, plain HTTP/2 off
 mappings/         stub mappings loaded at startup, one feature per file
 bruno/            Bruno collection (open this folder in Bruno, pick the "local" environment)
   calls/          one request per mapping behaviour, each with a docs block saying what to expect
@@ -24,6 +24,9 @@ bruno/            Bruno collection (open this folder in Bruno, pick the "local" 
   environments/   local.bru -> baseUrl http://localhost:8080 (WireMock), appUrl http://localhost:8090
 compose.yaml      Postgres 17 on localhost:5442 (5432 is taken by another project here)
 docker/           init script creating partner_a, partner_b, partner_c databases
+flowdocs-annotations/   @FlowStep, @FlowDecision, @Condition, @FlowParticipant (no dependencies)
+flowdocs-spring-boot/   runtime: auto-configuration + interceptor, inert unless enabled
+flowdocs-test/          test support: recorder, renderers, static graph, scenario runner, rules
 main-app/         router, com.example.router, port 8090; flow docs in main-app/docs/
 partner-a/        com.example.partner.a, port 8091, POST /partner-a/matches
 partner-b/        com.example.partner.b, port 8092, POST /partner-b/matches
@@ -101,55 +104,79 @@ Rebuild, start the container, and curl each affected endpoint (and `/__admin/map
 loaded count) before calling a change done. The Bruno CLI (`bru`) is not installed; the desktop
 app is.
 
-## Flow docs (main-app)
+## Flow docs (flowdocs-* modules, used by main-app)
 
-This is the design doc's framework, applied to the router.
+A library, kept in this repo for now, that generates flow docs from annotations. It's written to be
+added to any Spring Boot 4 app. Two rules shape it:
 
-- **Steps.** `@FlowStep` sits on:
-  - `SearchController.search` and `RequestValidator.validate`
-  - `Router.route`
-  - each `PartnerXClient.match`
-  - both `SearchExceptionHandler` methods (the 400 and 502 mappings)
+- **Add-only.** Apps gain annotations and nothing else. Functional code is never changed for the
+  docs. `git diff 3525edb -- main-app/src/main` shows only annotations, imports, `Participants`
+  and config.
+- **Performance-neutral in prod.** Unless `flow.observations.enabled=true`,
+  `FlowDocsAutoConfiguration` registers nothing: no beans, no proxies, no expression parsing.
+  `FlowDocsAutoConfigurationTest` and `FlowObservationsOffTest` check this.
 
-  It lives in `com.example.router.docs`, along with `Participant` and `FlowStepObservationConfig`.
-- **Decisions.** `@FlowDecision(question, participant, gates)` sits on each
-  `PartnerXService.shouldCall`, which returns `Decision.yes(reason)` or `Decision.no(reason)`.
-  - Static graph: a diamond, chained A → B → C in call-site order, with `yes` leading to the
-    gated step.
-  - Scenario diagrams: a note with the reason.
-- **Notes.** `FlowNotes.note(text)` adds a note to the step currently running, for example which
-  document was sent.
-- **Off by default.** The annotations do nothing unless `flow.observations.enabled=true`.
-- **Validation.** It's explicit (`RequestValidator`), not `@Valid`, so the 400 path is a step.
-  Malformed JSON still gets Spring's default 400 and isn't a step.
-- **Generated docs** in `main-app/docs/`:
+When it's enabled, the app needs an `ObservationRegistry` bean. Actuator provides one, and startup
+fails loudly without it. The library deliberately doesn't pull one in, because that would also
+switch on Boot's HTTP observations.
 
-  | File | Contents |
-  | --- | --- |
-  | `flow.mmd` | Every possible path |
-  | `README.md` | The graph, plus tables of steps, decisions and scenarios |
-  | `flows/<scenario>.mmd` | One diagram per scenario. It ends with the status the caller got. |
-  | `flows/<scenario>.md` | Request, decisions table, diagram, partner calls (from WireMock's request log), router response |
-- **Snapshot rule.** `./gradlew build` fails if a committed diagram is stale. To regenerate after an
-  intentional change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
-- **Scenarios.** They live in `main-app/src/test/resources/flow-scenarios/`. The test runs each one
-  against an in-process WireMock that serves all three `/partner-x` paths.
-  - Give each scenario its own SSN or PNumber, and match on it in `bodyPatterns`: `$.personId`
-    (A), `$.pNumber` (B), `$.personIdentifier` (C).
-  - Stub responses need a `Content-Type: application/json` header, or RestClient can't read them.
-  - Don't use random delays, so the diagrams stay the same between runs.
-- **Rules.** `FlowStepCoverageTest` checks that:
-  - every public method on a `*Client` in `..client..` is a step
-  - actions and questions are unique together
-  - steps and decisions aren't private or final, and aren't called from their own class
-  - every method returning `Decision` has `@FlowDecision`
-  - every `gates` names an existing step
-  - decisions are called only from steps
-- **Metrics.** Every flow observation carries `flow.kind` (`step` or `decision`) and
-  `flow.outcome` (`yes`, `no` or `none`), so the `flow.step` timer counts decision outcomes under
-  load.
-- **HTTP version.** `PartnerHttpConfig` pins RestClient to HTTP/1.1. Without it, the JDK client
-  tries an h2c upgrade (HTTP/2 over plain HTTP), and WireMock's Jetty resets the stream.
+**Annotations** (`com.example.flowdocs`):
+- `@FlowStep(action, participant, note)`. `note` is an optional SpEL template over the method's
+  arguments, for example `"Using passport #{#request.documentNumber()}"`. It's evaluated before the
+  call.
+- `@FlowDecision(question, participant, gates, conditions)` goes on an unchanged boolean method.
+  - Its return value is the outcome.
+  - Each `@Condition(label, test)` is a SpEL test over the arguments. `#hasText(...)` is available.
+    Conditions are evaluated after the call and ANDed.
+  - All conditions are evaluated, not short-circuited, so write them to be safe when earlier ones
+    are false.
+  - **Strict mode** (`flow.observations.strict=true`, which the scenario test sets): conditions
+    that disagree with the real return value, or an expression error, throw.
+  - **Otherwise:** it logs a warning, and the real value always flows through.
+- **Participants** are string ids declared as constants with `@FlowParticipant(label)`. See
+  `main-app/.../Participants.java`.
+
+**Generated docs** in `main-app/docs/`. `StaticFlowDocs` writes the first two, and `ScenarioRunner`
+writes the per-scenario files:
+
+| File | Contents |
+| --- | --- |
+| `flow.mmd` | Static graph. Each decision is a group of condition diamonds, chained in call-site order, with every "no" leading to the next decision. Exception handlers hang off the controller as dashed edges. |
+| `README.md` | The graph, plus tables of steps, decisions and scenarios |
+| `flows/<scenario>.mmd` | The sequence diagram. Decisions show each condition ✓/✗, and step notes appear before the call. It ends with the status the caller got. |
+| `flows/<scenario>.md` | Request, decisions table, diagram, downstream calls (from WireMock's request log), response |
+
+A request rejected before the controller (for example by `@Valid`) is drawn from MockMvc's resolved
+exception. MockMvc doesn't render the servlet container's error page, so the 400 body there is
+empty.
+
+**Snapshot rule.** `./gradlew build` fails if a committed doc is stale. After an intentional
+change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
+
+**Scenarios** (`main-app/src/test/resources/flow-scenarios/*.json`): `description`, `method`,
+`path`, `request`, `expectedStatus`, `stubs`.
+- The test uses one in-process WireMock for all three `/partner-x` paths.
+- Give each scenario its own SSN or PNumber, and match on it in `bodyPatterns`: `$.personId` (A),
+  `$.pNumber` (B), `$.personIdentifier` (C).
+- Stub responses need `Content-Type: application/json`.
+- Don't use random delays.
+
+**Rules** (`FlowDocsRules`, included by `FlowDocsRulesTest`):
+- methods calling `RestClient`, `RestTemplate` or `WebClient` must be steps
+- names are unique
+- steps and decisions aren't private, final or static, and aren't called from their own class
+- decisions return boolean, `gates` an existing step, and are called only from steps
+- every participant id is declared
+- every note and condition expression parses
+
+**Metrics.** The `flow.step` timer is tagged with `flow.kind` (`step`/`decision`) and `flow.outcome`
+(`yes`/`no`/`none`), so decision outcomes are countable under load.
+
+**WireMock and HTTP/2.** Spring's RestClient uses the JDK HttpClient, which tries an h2c upgrade
+(HTTP/2 over plain HTTP) that WireMock's Jetty resets. It's turned off on the WireMock side, never
+in the app:
+- the test uses `http2PlainDisabled(true)`
+- the Dockerfile passes `--disable-http2-plain`
 
 Gatling load test (`main-app/src/gatling/java/.../FlowScenariosSimulation.java`):
 

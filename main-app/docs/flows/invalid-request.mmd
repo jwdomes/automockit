@@ -1,8 +1,7 @@
 sequenceDiagram
-    %% Missing person.last: validation fails with 400 before any partner is considered
+    %% Missing person.last: Spring's @Valid rejects it with 400 before the controller runs. MockMvc doesn't render the servlet container's error page, so the body here is empty
     participant UPSTREAM as Upstream
     participant ROUTER as Router
-    UPSTREAM->>ROUTER: Receive search request
-    ROUTER->>ROUTER: Validate request
-    ROUTER->>ROUTER: Map invalid request to 400
+    UPSTREAM->>ROUTER: POST /search
+    Note over ROUTER: Rejected before controller — person.last: must not be blank
     ROUTER-->>UPSTREAM: 400 Bad Request

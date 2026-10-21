@@ -9,7 +9,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.example.router.docs.Decision;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.RequestDto;
 import com.example.router.dto.ResponseDto;
@@ -33,9 +32,9 @@ class RouterTest {
         PartnerResult a = new PartnerResult("PARTNER_A", List.of());
         PartnerResult b = new PartnerResult("PARTNER_B", List.of());
         PartnerResult c = new PartnerResult("PARTNER_C", List.of());
-        when(partnerA.shouldCall(request)).thenReturn(Decision.yes("a"));
-        when(partnerB.shouldCall(request)).thenReturn(Decision.yes("b"));
-        when(partnerC.shouldCall(request)).thenReturn(Decision.yes("c"));
+        when(partnerA.shouldCall(request)).thenReturn(true);
+        when(partnerB.shouldCall(request)).thenReturn(true);
+        when(partnerC.shouldCall(request)).thenReturn(true);
         when(partnerA.call(request)).thenReturn(a);
         when(partnerB.call(request)).thenReturn(b);
         when(partnerC.call(request)).thenReturn(c);
@@ -53,9 +52,7 @@ class RouterTest {
     @Test
     void skippedPartnersAreLeftOutOfResults() {
         PartnerResult c = new PartnerResult("PARTNER_C", List.of());
-        when(partnerA.shouldCall(request)).thenReturn(Decision.no("a"));
-        when(partnerB.shouldCall(request)).thenReturn(Decision.no("b"));
-        when(partnerC.shouldCall(request)).thenReturn(Decision.yes("c"));
+        when(partnerC.shouldCall(request)).thenReturn(true);
         when(partnerC.call(request)).thenReturn(c);
         ResponseDto response = new ResponseDto("req-1");
 

@@ -58,7 +58,7 @@ public class FlowScenariosSimulation extends Simulation {
     private final ScenarioBuilder flows = scenario("Flow scenarios")
             .feed(listFeeder(SCENARIO_DATA).circular())
             .exec(http("#{name}")
-                    .post("/search")
+                    .httpRequest("#{method}", "#{path}")
                     .body(StringBody("#{body}"))
                     .check(status().is(session -> session.getInt("status"))));
 
@@ -76,6 +76,8 @@ public class FlowScenariosSimulation extends Simulation {
                 JsonNode s = read(p);
                 return Map.<String, Object>of(
                         "name", p.getFileName().toString().replace(".json", ""),
+                        "method", s.get("method").asText(),
+                        "path", s.get("path").asText(),
                         "body", s.get("request").toString(),
                         "status", s.get("expectedStatus").asInt(),
                         "stubs", s.get("stubs"));

@@ -1,5 +1,7 @@
 {
   "description": "SSN with a malformed passport: only C is called",
+  "method": "POST",
+  "path": "/search",
   "request": {
     "header": {
       "requestId": "c-only",

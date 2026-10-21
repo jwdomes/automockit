@@ -2,7 +2,7 @@
 
 SSN with a malformed passport: only C is called
 
-**Status:** 200 (expected 200) · **Partners called:** Partner C
+**Status:** 200 (expected 200) · **Called:** Partner C
 
 ## Request
 
@@ -32,11 +32,11 @@ SSN with a malformed passport: only C is called
 
 ## Decisions
 
-| Decision | Outcome | Reason |
+| Decision | Outcome | Conditions |
 | --- | --- | --- |
-| Partner A eligible? | no | no valid passport |
-| Partner B eligible? | no | no PNumber |
-| Partner C eligible? | yes | SSN |
+| Partner A eligible? | no | SSN present ✓, valid passport ✗ |
+| Partner B eligible? | no | PNumber present ✗, valid driver license ✗ |
+| Partner C eligible? | yes | SSN present ✓ |
 
 ## Flow
 
@@ -47,19 +47,18 @@ sequenceDiagram
     participant ROUTER as Router
     participant PARTNER_C as Partner C
     UPSTREAM->>ROUTER: Receive search request
-    ROUTER->>ROUTER: Validate request
     ROUTER->>ROUTER: Determine downstream partners
-    Note over ROUTER: Partner A eligible? no — no valid passport
-    Note over ROUTER: Partner B eligible? no — no PNumber
-    Note over ROUTER: Partner C eligible? yes — SSN
+    Note over ROUTER: Partner A eligible? no — SSN present ✓, valid passport ✗
+    Note over ROUTER: Partner B eligible? no — PNumber present ✗, valid driver license ✗
+    Note over ROUTER: Partner C eligible? yes — SSN present ✓
     ROUTER->>PARTNER_C: Call Partner C
     PARTNER_C-->>ROUTER: response
     ROUTER-->>UPSTREAM: 200 OK
 ```
 
-## Partner calls
+## Downstream calls
 
-### Partner C: POST /partner-c/matches → 200
+### POST /partner-c/matches → 200
 
 Matched `stubs[0]`.
 
@@ -85,7 +84,7 @@ Matched `stubs[0]`.
 
 </details>
 
-## Router response
+## Response
 
 <details><summary>200 OK</summary>
 

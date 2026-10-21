@@ -1,5 +1,7 @@
 {
   "description": "SSN and valid passport but no PNumber: A and C are called, B is skipped",
+  "method": "POST",
+  "path": "/search",
   "request": {
     "header": {
       "requestId": "a-and-c",

@@ -1,5 +1,7 @@
 {
   "description": "No SSN and no PNumber: no partner is called",
+  "method": "POST",
+  "path": "/search",
   "request": {
     "header": {
       "requestId": "no-partners",

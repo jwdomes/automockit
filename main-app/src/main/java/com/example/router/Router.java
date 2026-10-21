@@ -1,7 +1,6 @@
 package com.example.router;
 
-import com.example.router.docs.FlowStep;
-import com.example.router.docs.Participant;
+import com.example.flowdocs.FlowStep;
 import com.example.router.dto.RequestDto;
 import com.example.router.dto.ResponseDto;
 import com.example.router.partner.PartnerAService;
@@ -22,15 +21,15 @@ public class Router {
         this.partnerC = partnerC;
     }
 
-    @FlowStep(action = "Determine downstream partners", participant = Participant.ROUTER)
+    @FlowStep(action = "Determine downstream partners", participant = Participants.ROUTER)
     public void route(RequestDto request, ResponseDto response) {
-        if (partnerA.shouldCall(request).yes()) {
+        if (partnerA.shouldCall(request)) {
             response.add(partnerA.call(request));
         }
-        if (partnerB.shouldCall(request).yes()) {
+        if (partnerB.shouldCall(request)) {
             response.add(partnerB.call(request));
         }
-        if (partnerC.shouldCall(request).yes()) {
+        if (partnerC.shouldCall(request)) {
             response.add(partnerC.call(request));
         }
     }

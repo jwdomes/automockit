@@ -1,5 +1,7 @@
 {
   "description": "SSN, PNumber, valid passport and license: A, B and C are all called",
+  "method": "POST",
+  "path": "/search",
   "request": {
     "header": {
       "requestId": "all-partners",

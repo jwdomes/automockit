@@ -1,0 +1,4 @@
+rootProject.name = 'automockit'
+
+include 'flowdocs-annotations', 'flowdocs-spring-boot', 'flowdocs-test'
+include 'main-app', 'partner-a', 'partner-b', 'partner-c'

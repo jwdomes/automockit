@@ -11,8 +11,6 @@ import static org.mockito.Mockito.when;
 import com.example.router.client.PartnerBClient;
 import com.example.router.client.PartnerBRequest;
 import com.example.router.client.PartnerMatchResponse;
-import com.example.router.docs.Decision;
-import com.example.router.docs.FlowNotes;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -20,30 +18,26 @@ import org.junit.jupiter.api.Test;
 class PartnerBServiceTest {
 
     private final PartnerBClient client = mock(PartnerBClient.class);
-    private final PartnerBService service = new PartnerBService(client, mock(FlowNotes.class));
+    private final PartnerBService service = new PartnerBService(client);
 
     @Test
     void calledWithValidDriverLicenseAndPNumber() {
-        assertThat(service.shouldCall(request(null, "PN1001", driverLicense("L10000001"))))
-                .isEqualTo(Decision.yes("PNumber + valid driver license"));
+        assertThat(service.shouldCall(request(null, "PN1001", driverLicense("L10000001")))).isTrue();
     }
 
     @Test
     void notCalledWithoutPNumber() {
-        assertThat(service.shouldCall(request("111223333", null, driverLicense("L10000001"))))
-                .isEqualTo(Decision.no("no PNumber"));
+        assertThat(service.shouldCall(request("111223333", null, driverLicense("L10000001")))).isFalse();
     }
 
     @Test
     void notCalledWithInvalidDriverLicenseNumber() {
-        assertThat(service.shouldCall(request(null, "PN1001", driverLicense("10000001"))))
-                .isEqualTo(Decision.no("no valid driver license"));
+        assertThat(service.shouldCall(request(null, "PN1001", driverLicense("10000001")))).isFalse();
     }
 
     @Test
     void notCalledWithOtherDocumentType() {
-        assertThat(service.shouldCall(request(null, "PN1001", passport("L10000001"))))
-                .isEqualTo(Decision.no("no valid driver license"));
+        assertThat(service.shouldCall(request(null, "PN1001", passport("L10000001")))).isFalse();
     }
 
     @Test

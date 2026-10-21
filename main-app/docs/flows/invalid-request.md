@@ -1,8 +1,8 @@
 # invalid-request
 
-Missing person.last: validation fails with 400 before any partner is considered
+Missing person.last: Spring's @Valid rejects it with 400 before the controller runs. MockMvc doesn't render the servlet container's error page, so the body here is empty
 
-**Status:** 400 (expected 400) · **Partners called:** none
+**Status:** 400 (expected 400) · **Called:** none
 
 ## Request
 
@@ -37,30 +37,22 @@ None reached.
 
 ```mermaid
 sequenceDiagram
-    %% Missing person.last: validation fails with 400 before any partner is considered
+    %% Missing person.last: Spring's @Valid rejects it with 400 before the controller runs. MockMvc doesn't render the servlet container's error page, so the body here is empty
     participant UPSTREAM as Upstream
     participant ROUTER as Router
-    UPSTREAM->>ROUTER: Receive search request
-    ROUTER->>ROUTER: Validate request
-    ROUTER->>ROUTER: Map invalid request to 400
+    UPSTREAM->>ROUTER: POST /search
+    Note over ROUTER: Rejected before controller — person.last: must not be blank
     ROUTER-->>UPSTREAM: 400 Bad Request
 ```
 
-## Partner calls
+## Downstream calls
 
 None.
 
-## Router response
+## Response
 
 <details><summary>400 Bad Request</summary>
 
-```json
-{
-  "detail" : "person.last: must not be blank",
-  "instance" : "/search",
-  "status" : 400,
-  "title" : "Bad Request"
-}
-```
+_Empty body._
 
 </details>

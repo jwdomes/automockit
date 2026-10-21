@@ -1,5 +1,7 @@
 {
-  "description": "Missing person.last: validation fails with 400 before any partner is considered",
+  "description": "Missing person.last: Spring's @Valid rejects it with 400 before the controller runs. MockMvc doesn't render the servlet container's error page, so the body here is empty",
+  "method": "POST",
+  "path": "/search",
   "request": {
     "header": {
       "requestId": "invalid-request",

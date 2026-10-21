@@ -1,11 +1,10 @@
 package com.example.router.partner;
 
+import com.example.flowdocs.Condition;
+import com.example.flowdocs.FlowDecision;
+import com.example.router.Participants;
 import com.example.router.client.PartnerAClient;
 import com.example.router.client.PartnerARequest;
-import com.example.router.docs.Decision;
-import com.example.router.docs.FlowDecision;
-import com.example.router.docs.FlowNotes;
-import com.example.router.docs.Participant;
 import com.example.router.dto.DocumentType;
 import com.example.router.dto.PartnerResult;
 import com.example.router.dto.Person;
@@ -17,29 +16,28 @@ import org.springframework.util.StringUtils;
 public class PartnerAService {
 
     private final PartnerAClient client;
-    private final FlowNotes notes;
 
-    public PartnerAService(PartnerAClient client, FlowNotes notes) {
+    public PartnerAService(PartnerAClient client) {
         this.client = client;
-        this.notes = notes;
     }
 
-    @FlowDecision(question = "Partner A eligible?", participant = Participant.ROUTER, gates = "Call Partner A")
-    public Decision shouldCall(RequestDto request) {
-        if (!StringUtils.hasText(request.person().ssn())) {
-            return Decision.no("no SSN");
-        }
-        if (request.firstValidNumber(DocumentType.PASSPORT).isEmpty()) {
-            return Decision.no("no valid passport");
-        }
-        return Decision.yes("SSN + valid passport");
+    @FlowDecision(question = "Partner A eligible?", participant = Participants.ROUTER, gates = "Call Partner A",
+            conditions = {
+                    @Condition(label = "SSN present", test = "#hasText(#request.person().ssn())"),
+                    @Condition(label = "valid passport", test =
+                            "#request.firstValidNumber(T(com.example.router.dto.DocumentType).PASSPORT).isPresent()")})
+    public boolean shouldCall(RequestDto request) {
+        return StringUtils.hasText(request.person().ssn())
+                && request.firstValidNumber(DocumentType.PASSPORT).isPresent();
     }
 
     public PartnerResult call(RequestDto request) {
         Person person = request.person();
-        String passport = request.firstValidNumber(DocumentType.PASSPORT).orElseThrow();
-        notes.note("Using passport " + passport);
-        PartnerARequest partnerRequest = new PartnerARequest(person.first(), person.last(), passport, person.ssn());
+        PartnerARequest partnerRequest = new PartnerARequest(
+                person.first(),
+                person.last(),
+                request.firstValidNumber(DocumentType.PASSPORT).orElseThrow(),
+                person.ssn());
         return new PartnerResult("PARTNER_A", client.match(request.header().requestId(), partnerRequest).matches());
     }
 }

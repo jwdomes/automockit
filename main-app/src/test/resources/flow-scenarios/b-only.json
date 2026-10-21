@@ -1,5 +1,7 @@
 {
   "description": "PNumber and valid license but no SSN: only B is called",
+  "method": "POST",
+  "path": "/search",
   "request": {
     "header": {
       "requestId": "b-only",

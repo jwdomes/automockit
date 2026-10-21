@@ -2,7 +2,7 @@
 
 Partner B returns 500 after A succeeds: request fails with 502 and C is never called
 
-**Status:** 502 (expected 502) · **Partners called:** Partner A, Partner B
+**Status:** 502 (expected 502) · **Called:** Partner A, Partner B
 
 ## Request
 
@@ -36,10 +36,10 @@ Partner B returns 500 after A succeeds: request fails with 502 and C is never ca
 
 ## Decisions
 
-| Decision | Outcome | Reason |
+| Decision | Outcome | Conditions |
 | --- | --- | --- |
-| Partner A eligible? | yes | SSN + valid passport |
-| Partner B eligible? | yes | PNumber + valid driver license |
+| Partner A eligible? | yes | SSN present ✓, valid passport ✓ |
+| Partner B eligible? | yes | PNumber present ✓, valid driver license ✓ |
 
 ## Flow
 
@@ -51,23 +51,22 @@ sequenceDiagram
     participant PARTNER_A as Partner A
     participant PARTNER_B as Partner B
     UPSTREAM->>ROUTER: Receive search request
-    ROUTER->>ROUTER: Validate request
     ROUTER->>ROUTER: Determine downstream partners
-    Note over ROUTER: Partner A eligible? yes — SSN + valid passport
-    Note over ROUTER: Using passport FA0000006
+    Note over ROUTER: Partner A eligible? yes — SSN present ✓, valid passport ✓
+    Note over ROUTER,PARTNER_A: Using passport FA0000006
     ROUTER->>PARTNER_A: Call Partner A
     PARTNER_A-->>ROUTER: response
-    Note over ROUTER: Partner B eligible? yes — PNumber + valid driver license
-    Note over ROUTER: Using driver license F00000006
+    Note over ROUTER: Partner B eligible? yes — PNumber present ✓, valid driver license ✓
+    Note over ROUTER,PARTNER_B: Using driver license F00000006
     ROUTER->>PARTNER_B: Call Partner B
     PARTNER_B--xROUTER: InternalServerError
     ROUTER->>ROUTER: Map partner failure to 502
     ROUTER-->>UPSTREAM: 502 Bad Gateway
 ```
 
-## Partner calls
+## Downstream calls
 
-### Partner A: POST /partner-a/matches → 200
+### POST /partner-a/matches → 200
 
 Matched `stubs[0]`.
 
@@ -99,7 +98,7 @@ Matched `stubs[0]`.
 
 </details>
 
-### Partner B: POST /partner-b/matches → 500
+### POST /partner-b/matches → 500
 
 Matched `stubs[1]`.
 
@@ -123,7 +122,7 @@ _Empty body._
 
 </details>
 
-## Router response
+## Response
 
 <details><summary>502 Bad Gateway</summary>
 
