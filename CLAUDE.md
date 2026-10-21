@@ -156,6 +156,16 @@ switch on Boot's HTTP observations.
   - **Strict mode** (`flow.observations.strict=true`, which the scenario test sets): conditions
     that disagree with the real return value, or an expression error, throw.
   - **Otherwise:** it logs a warning, and the real value always flows through.
+- `@FlowBranch(question, participant, gates, otherwise, conditions)` covers an inline if/else, which
+  has no method of its own. It's repeatable, and goes on the `@FlowStep` method containing the
+  branch: see `Router.route`.
+  - The outcome is observed: "yes" if the `gates` step ran during the call, "no" if the
+    `otherwise` step did.
+  - The branch is recorded as a decision just before that step.
+  - Conditions are evaluated on entry. They can use `#property('key')` to read configuration.
+  - The same strict cross-check applies, plus "both paths ran". Tracking is per thread, and a
+    branch in a loop records its first pass only.
+- `#property('key')` is available to every condition and note.
 - **Participants** are string ids declared as constants with `@FlowParticipant(label)`. See
   `main-app/.../Participants.java`.
 
@@ -164,7 +174,7 @@ writes the per-scenario files:
 
 | File | Contents |
 | --- | --- |
-| `flow.mmd` | Static graph. Each decision is a group of condition diamonds, chained in call-site order, with every "no" leading to the next decision. Exception handlers hang off the controller as dashed edges. |
+| `flow.mmd` | Static graph. Each decision or branch is a group of condition diamonds, chained in code order. Every "no" leads to the branch's `otherwise` step, or else the next decision. Exception handlers hang off the controller as dashed edges. |
 | `README.md` | The graph, plus tables of steps, decisions and scenarios |
 | `flows/<scenario>.mmd` | The sequence diagram. Decisions show each condition ✓/✗, and step notes appear before the call. It ends with the status the caller got. |
 | `flows/<scenario>.md` | Request, decisions table, diagram, downstream calls (from WireMock's request log), response |
@@ -177,14 +187,20 @@ empty.
 change, run `./gradlew :main-app:test -PupdateFlowDocs` and commit `docs/`.
 
 **Scenarios** (`main-app/src/test/resources/flow-scenarios/*.json`): `description`, `method`,
-`path`, `request`, `expectedStatus`, `stubs`.
+`path`, optional `properties`, `request`, `expectedStatus`, `stubs`.
+- **One test class per property set.** Configuration is per application context, so each class
+  runs the scenarios whose `properties` match its own `@SpringBootTest` properties, via
+  `Scenario.names(dir, properties)`. Shared wiring is in `ScenarioDocsTestSupport`.
+  - `FlowScenarioDocsTest` runs the defaults (`Map.of()`).
+  - `NewIdProviderScenarioDocsTest` runs `id-provider.use-new=true`.
+- **Guards.** A scenario fails if its context lacks its properties. `FlowDocsTest` fails if any
+  scenario has no generated page, which is what happens when no test class runs its properties.
 - The test uses one in-process WireMock for all three `/partner-x` paths.
 - Give each scenario its own SSN or PNumber, and match on it in `bodyPatterns`: `$.personId` (A),
   `$.pNumber` (B), `$.personIdentifier` (C).
 - **ID provider stub.** Every scenario that reaches `route()` needs a legacy ID provider stub,
   because tests run with the default flag. It matches on the scenario's `$.lastName`.
-- **New-provider path.** No scenario covers it yet: the flag is per application context, not per
-  request. `RouterTest` covers both branches.
+- **New-provider path.** `new-id-provider.json` covers it, with a new-provider stub instead.
 - Stub responses need `Content-Type: application/json`.
 - Don't use random delays.
 
@@ -221,13 +237,16 @@ Gatling load test (`main-app/src/gatling/java/.../FlowScenariosSimulation.java`)
 ```bash
 docker run -d --rm --name wiremock -p 8080:8080 wiremock-local
 java -jar main-app/build/libs/main-app.jar --spring.profiles.active=wiremock --flow.observations.enabled=true
-./gradlew :main-app:gatlingRun        # env: APP_URL, WIREMOCK_URL, PARTNER_DELAY_MS, PEAK_USERS_PER_SEC, RAMP_SECONDS
+./gradlew :main-app:gatlingRun        # env: APP_URL, WIREMOCK_URL, PARTNER_DELAY_MS, PEAK_USERS_PER_SEC, RAMP_SECONDS, GATLING_PROPERTIES
 curl 'localhost:8090/actuator/metrics/flow.step?tag=flow.participant:PARTNER_A'
 ```
 
 - `before()` resets WireMock and loads every scenario's stubs at once. The baked-in `/api/*`
   mappings don't overlap with them.
 - The `wiremock` profile points all three partner base URLs at `localhost:8080`.
+- **`GATLING_PROPERTIES`** (for example `id-provider.use-new=true`) selects the scenarios for that
+  property set. The default is the scenarios without `properties`. Start the app with the same
+  settings.
 
 ## Open questions
 

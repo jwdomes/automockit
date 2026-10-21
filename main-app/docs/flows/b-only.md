@@ -34,6 +34,7 @@ PNumber and valid license but no SSN: only B is called
 
 | Decision | Outcome | Conditions |
 | --- | --- | --- |
+| Use new ID provider? | no | new provider enabled ✗ |
 | Partner A eligible? | no | SSN present ✗, valid passport ✗ |
 | Partner B eligible? | yes | PNumber present ✓, valid driver license ✓ |
 | Partner C eligible? | no | SSN present ✗ |
@@ -49,6 +50,7 @@ sequenceDiagram
     participant PARTNER_B as Partner B
     UPSTREAM->>ROUTER: Receive search request
     ROUTER->>ROUTER: Determine downstream partners
+    Note over ROUTER: Use new ID provider? no — new provider enabled ✗
     ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
     LEGACY_ID_PROVIDER-->>ROUTER: response
     Note over ROUTER: Partner A eligible? no — SSN present ✗, valid passport ✗

@@ -22,6 +22,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -35,6 +36,9 @@ public class FlowScenariosSimulation extends Simulation {
     private static final int PARTNER_DELAY_MS = Integer.parseInt(env("PARTNER_DELAY_MS", "0"));
     private static final int PEAK_USERS_PER_SEC = Integer.parseInt(env("PEAK_USERS_PER_SEC", "20"));
     private static final int RAMP_SECONDS = Integer.parseInt(env("RAMP_SECONDS", "60"));
+    // One running app has one configuration: load only the scenarios declaring exactly these properties,
+    // e.g. GATLING_PROPERTIES=id-provider.use-new=true for an app started with that setting.
+    private static final Map<String, String> PROPERTIES = parseProperties(env("GATLING_PROPERTIES", ""));
     private static final ObjectMapper JSON = new ObjectMapper();   // Jackson 2, bundled with Gatling
 
     private static final List<Map<String, Object>> SCENARIO_DATA = loadScenarios();
@@ -72,19 +76,39 @@ public class FlowScenariosSimulation extends Simulation {
 
     private static List<Map<String, Object>> loadScenarios() {
         try (Stream<Path> files = Files.list(SCENARIOS)) {
-            return files.filter(p -> p.toString().endsWith(".json")).sorted().map(p -> {
-                JsonNode s = read(p);
-                return Map.<String, Object>of(
-                        "name", p.getFileName().toString().replace(".json", ""),
-                        "method", s.get("method").asText(),
-                        "path", s.get("path").asText(),
-                        "body", s.get("request").toString(),
-                        "status", s.get("expectedStatus").asInt(),
-                        "stubs", s.get("stubs"));
-            }).toList();
+            return files.filter(p -> p.toString().endsWith(".json")).sorted()
+                    .filter(p -> properties(read(p)).equals(PROPERTIES))
+                    .map(p -> {
+                        JsonNode s = read(p);
+                        return Map.<String, Object>of(
+                                "name", p.getFileName().toString().replace(".json", ""),
+                                "method", s.get("method").asText(),
+                                "path", s.get("path").asText(),
+                                "body", s.get("request").toString(),
+                                "status", s.get("expectedStatus").asInt(),
+                                "stubs", s.get("stubs"));
+                    })
+                    .toList();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    private static Map<String, String> properties(JsonNode scenario) {
+        Map<String, String> properties = new HashMap<>();
+        scenario.path("properties").properties().forEach(e -> properties.put(e.getKey(), e.getValue().asText()));
+        return properties;
+    }
+
+    private static Map<String, String> parseProperties(String spec) {
+        Map<String, String> properties = new HashMap<>();
+        for (String pair : spec.split(",")) {
+            if (!pair.isBlank()) {
+                String[] keyValue = pair.split("=", 2);
+                properties.put(keyValue[0].strip(), keyValue[1].strip());
+            }
+        }
+        return properties;
     }
 
     private static JsonNode read(Path p) {

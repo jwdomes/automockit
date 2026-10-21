@@ -46,6 +46,8 @@ public class ScenarioRunner {
 
     public void run(String name, MockMvc mvc, FlowRecorder recorder) throws Exception {
         Scenario scenario = Scenario.load(settings.scenariosDir(), name);
+        scenario.properties().forEach((key, value) -> assertEquals(value, recorder.properties().getProperty(key),
+                "Scenario " + name + " needs " + key + "=" + value + "; run it from a test whose context sets it"));
 
         wireMock.resetAll();
         recorder.clear();

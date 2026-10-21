@@ -14,6 +14,6 @@ public class EntryController {
 
     @FlowStep(action = "Receive", participant = Ids.APP)
     public String receive(String in) {
-        return orchestrator.run(in);
+        return orchestrator.run(in, in.startsWith("f"));
     }
 }

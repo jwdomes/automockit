@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
+import org.springframework.core.env.PropertyResolver;
 
 /**
  * Builds the step tree as observations start and stop. Ignores observations without a flow.step key
@@ -68,6 +69,7 @@ public class FlowRecorder {
         }
     }
 
+    private final PropertyResolver properties;
     private final AtomicLong seq = new AtomicLong();
     private final Map<Object, Step> byContext = Collections.synchronizedMap(new IdentityHashMap<>());
     private final List<Step> roots = new CopyOnWriteArrayList<>();
@@ -109,6 +111,15 @@ public class FlowRecorder {
             }
         }
     };
+
+    /** @param properties the configuration of the context being recorded, so scenarios can check it */
+    public FlowRecorder(PropertyResolver properties) {
+        this.properties = properties;
+    }
+
+    PropertyResolver properties() {
+        return properties;
+    }
 
     List<Step> roots() {
         return roots.stream().sorted(Comparator.comparingLong(s -> s.startSeq)).toList();

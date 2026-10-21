@@ -37,12 +37,15 @@ flowchart TD
             partner_c_eligible__ssn_present{"SSN present?"}
         end
         receive_search_request["Receive search request"]
+        subgraph use_new_id_provider["Use new ID provider?"]
+            use_new_id_provider__new_provider_enabled{"new provider enabled?"}
+        end
     end
+    call_legacy_id_provider --> partner_a_eligible__ssn_present
+    call_new_id_provider --> partner_a_eligible__ssn_present
     call_partner_a --> partner_b_eligible__pnumber_present
     call_partner_b --> partner_c_eligible__ssn_present
-    determine_downstream_partners --> call_legacy_id_provider
-    determine_downstream_partners --> call_new_id_provider
-    determine_downstream_partners --> partner_a_eligible__ssn_present
+    determine_downstream_partners --> use_new_id_provider__new_provider_enabled
     partner_a_eligible__ssn_present -->|no| partner_b_eligible__pnumber_present
     partner_a_eligible__ssn_present -->|yes| partner_a_eligible__valid_passport
     partner_a_eligible__valid_passport -->|no| partner_b_eligible__pnumber_present
@@ -54,6 +57,8 @@ flowchart TD
     partner_c_eligible__ssn_present -->|yes| call_partner_c
     receive_search_request --> determine_downstream_partners
     receive_search_request -.->|"RestClientException"| map_partner_failure_to_502
+    use_new_id_provider__new_provider_enabled -->|no| call_legacy_id_provider
+    use_new_id_provider__new_provider_enabled -->|yes| call_new_id_provider
 ```
 
 ## Steps and decisions
@@ -71,15 +76,17 @@ flowchart TD
 | Partner B eligible? | decision | Router | [`PartnerBService#shouldCall`](../src/main/java/com/example/router/partner/PartnerBService.java) |
 | Partner C eligible? | decision | Router | [`PartnerCService#shouldCall`](../src/main/java/com/example/router/partner/PartnerCService.java) |
 | Receive search request | step | Router | [`SearchController#search`](../src/main/java/com/example/router/SearchController.java) |
+| Use new ID provider? | branch | Router | [`Router#route`](../src/main/java/com/example/router/Router.java) |
 
 ## Scenarios
 
-| Scenario | Description | Request | Expected status |
-| --- | --- | --- | --- |
-| [a-and-c](flows/a-and-c.md) | SSN and valid passport but no PNumber: A and C are called, B is skipped | `POST /search` | 200 |
-| [all-partners](flows/all-partners.md) | SSN, PNumber, valid passport and license: A, B and C are all called | `POST /search` | 200 |
-| [b-only](flows/b-only.md) | PNumber and valid license but no SSN: only B is called | `POST /search` | 200 |
-| [c-only](flows/c-only.md) | SSN with a malformed passport: only C is called | `POST /search` | 200 |
-| [invalid-request](flows/invalid-request.md) | Missing person.last: Spring's @Valid rejects it with 400 before the controller runs. MockMvc doesn't render the servlet container's error page, so the body here is empty | `POST /search` | 400 |
-| [no-partners](flows/no-partners.md) | No SSN and no PNumber: no partner is called | `POST /search` | 200 |
-| [partner-b-error](flows/partner-b-error.md) | Partner B returns 500 after A succeeds: request fails with 502 and C is never called | `POST /search` | 502 |
+| Scenario | Description | Request | Properties | Expected status |
+| --- | --- | --- | --- | --- |
+| [a-and-c](flows/a-and-c.md) | SSN and valid passport but no PNumber: A and C are called, B is skipped | `POST /search` | default | 200 |
+| [all-partners](flows/all-partners.md) | SSN, PNumber, valid passport and license: A, B and C are all called | `POST /search` | default | 200 |
+| [b-only](flows/b-only.md) | PNumber and valid license but no SSN: only B is called | `POST /search` | default | 200 |
+| [c-only](flows/c-only.md) | SSN with a malformed passport: only C is called | `POST /search` | default | 200 |
+| [invalid-request](flows/invalid-request.md) | Missing person.last: Spring's @Valid rejects it with 400 before the controller runs. MockMvc doesn't render the servlet container's error page, so the body here is empty | `POST /search` | default | 400 |
+| [new-id-provider](flows/new-id-provider.md) | New ID provider switched on: the person id comes from the new provider; no identifiers, so no partner is called | `POST /search` | `id-provider.use-new=true` | 200 |
+| [no-partners](flows/no-partners.md) | No SSN and no PNumber: no partner is called | `POST /search` | default | 200 |
+| [partner-b-error](flows/partner-b-error.md) | Partner B returns 500 after A succeeds: request fails with 502 and C is never called | `POST /search` | default | 502 |

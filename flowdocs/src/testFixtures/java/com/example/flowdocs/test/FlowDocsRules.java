@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.flowdocs.Condition;
+import com.example.flowdocs.FlowBranch;
 import com.example.flowdocs.FlowDecision;
 import com.example.flowdocs.FlowStep;
 import com.example.flowdocs.boot.FlowExpressions;
@@ -79,15 +80,28 @@ public final class FlowDocsRules {
     public static final ArchRule decisionsAreCalledFromSteps =
             methods().that().areAnnotatedWith(FlowDecision.class).should(onlyBeCalledFromSteps());
 
-    /** Steps and decisions share one id namespace in the static graph. */
+    /** A branch is declared on the step that contains it; elsewhere nothing would observe it. */
+    @ArchTest
+    public static void branchesAreOnSteps(JavaClasses classes) {
+        List<String> misplaced = branchMethods(classes)
+                .filter(m -> !m.isAnnotatedWith(FlowStep.class))
+                .map(JavaMethod::getFullName)
+                .toList();
+        assertTrue(misplaced.isEmpty(), "@FlowBranch on a method that isn't a @FlowStep: " + misplaced);
+    }
+
+    /** Steps, decisions and branches share one id namespace in the static graph. */
     @ArchTest
     public static void namesAreUnique(JavaClasses classes) {
         Map<String, List<String>> bySlug = new TreeMap<>();
         flowMethods(classes).forEach(m -> bySlug
                 .computeIfAbsent(FlowIds.slug(flowName(m)), k -> new ArrayList<>())
                 .add(m.getFullName()));
+        branchMethods(classes).forEach(m -> FlowGraph.branchesOf(m).forEach(b -> bySlug
+                .computeIfAbsent(FlowIds.slug(b.question()), k -> new ArrayList<>())
+                .add(m.getFullName() + " @FlowBranch")));
         bySlug.values().removeIf(methods -> methods.size() < 2);
-        assertTrue(bySlug.isEmpty(), "Duplicate @FlowStep actions or @FlowDecision questions: " + bySlug);
+        assertTrue(bySlug.isEmpty(), "Duplicate step actions or decision/branch questions: " + bySlug);
     }
 
     @ArchTest
@@ -102,8 +116,16 @@ public final class FlowDocsRules {
                 .filter(m -> m.isAnnotatedWith(FlowDecision.class))
                 .filter(m -> !actions.contains(m.getAnnotationOfType(FlowDecision.class).gates()))
                 .map(m -> m.getFullName() + " gates \"" + m.getAnnotationOfType(FlowDecision.class).gates() + "\"")
-                .toList();
-        assertTrue(missing.isEmpty(), "@FlowDecision gates a step that doesn't exist: " + missing);
+                .collect(Collectors.toCollection(ArrayList::new));
+        branchMethods(classes).forEach(m -> FlowGraph.branchesOf(m).forEach(b -> {
+            if (!actions.contains(b.gates())) {
+                missing.add("%s @FlowBranch \"%s\" gates \"%s\"".formatted(m.getFullName(), b.question(), b.gates()));
+            }
+            if (!b.otherwise().isEmpty() && !actions.contains(b.otherwise())) {
+                missing.add("%s @FlowBranch \"%s\" otherwise \"%s\"".formatted(m.getFullName(), b.question(), b.otherwise()));
+            }
+        }));
+        assertTrue(missing.isEmpty(), "Decisions or branches name a step that doesn't exist: " + missing);
     }
 
     /**
@@ -127,6 +149,11 @@ public final class FlowDocsRules {
                             .forEach(caller -> unreachable.add("%s gates \"%s\", which %s never reaches".formatted(
                                     decision.getFullName(), gates, caller.getFullName())));
                 });
+        branchMethods(classes).forEach(step -> FlowGraph.branchesOf(step).forEach(b ->
+                Stream.of(b.gates(), b.otherwise()).filter(target -> !target.isEmpty())
+                        .filter(target -> !graph.reaches(step, FlowIds.slug(target)))
+                        .forEach(target -> unreachable.add("@FlowBranch \"%s\" names \"%s\", which %s never reaches"
+                                .formatted(b.question(), target, step.getFullName())))));
         assertTrue(unreachable.isEmpty(), "Gated steps not reachable from the deciding step: " + unreachable);
     }
 
@@ -140,7 +167,10 @@ public final class FlowDocsRules {
         List<String> undeclared = flowMethods(classes)
                 .filter(m -> !declared.containsKey(participant(m)))
                 .map(m -> m.getFullName() + " uses \"" + participant(m) + "\"")
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
+        branchMethods(classes).forEach(m -> FlowGraph.branchesOf(m).stream()
+                .filter(b -> !declared.containsKey(b.participant()))
+                .forEach(b -> undeclared.add(m.getFullName() + " @FlowBranch uses \"" + b.participant() + "\"")));
         assertTrue(duplicates.isEmpty(), "Participant ids declared more than once: " + duplicates);
         assertTrue(undeclared.isEmpty(), "Participants with no @FlowParticipant constant: " + undeclared);
     }
@@ -157,6 +187,11 @@ public final class FlowDocsRules {
                     parse(() -> FlowExpressions.parseCondition(c.test()), m, "condition \"" + c.label() + "\"", failures);
                 }
             });
+            for (FlowBranch b : FlowGraph.branchesOf(m)) {
+                for (Condition c : b.conditions()) {
+                    parse(() -> FlowExpressions.parseCondition(c.test()), m, "branch condition \"" + c.label() + "\"", failures);
+                }
+            }
         });
         assertTrue(failures.isEmpty(), "Unparseable flow expressions: " + failures);
     }
@@ -205,6 +240,12 @@ public final class FlowDocsRules {
                                 "Decision called outside a @FlowStep method: " + call.getDescription())));
             }
         };
+    }
+
+    private static Stream<JavaMethod> branchMethods(JavaClasses classes) {
+        return classes.stream()
+                .flatMap(c -> c.getMethods().stream())
+                .filter(m -> !FlowGraph.branchesOf(m).isEmpty());
     }
 
     private static Stream<JavaMethod> flowMethods(JavaClasses classes) {

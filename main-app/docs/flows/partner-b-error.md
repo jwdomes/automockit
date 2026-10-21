@@ -38,6 +38,7 @@ Partner B returns 500 after A succeeds: request fails with 502 and C is never ca
 
 | Decision | Outcome | Conditions |
 | --- | --- | --- |
+| Use new ID provider? | no | new provider enabled ✗ |
 | Partner A eligible? | yes | SSN present ✓, valid passport ✓ |
 | Partner B eligible? | yes | PNumber present ✓, valid driver license ✓ |
 
@@ -53,6 +54,7 @@ sequenceDiagram
     participant PARTNER_B as Partner B
     UPSTREAM->>ROUTER: Receive search request
     ROUTER->>ROUTER: Determine downstream partners
+    Note over ROUTER: Use new ID provider? no — new provider enabled ✗
     ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
     LEGACY_ID_PROVIDER-->>ROUTER: response
     Note over ROUTER: Partner A eligible? yes — SSN present ✓, valid passport ✓

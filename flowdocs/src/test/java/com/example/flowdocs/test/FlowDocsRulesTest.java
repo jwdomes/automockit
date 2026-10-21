@@ -29,4 +29,12 @@ class FlowDocsRulesTest {
                 .hasMessageContaining("was violated (1 times)")
                 .hasMessageContaining("Caller.fetchUnannotated()");
     }
+
+    @Test
+    void branchOnANonStepMethodFails() {
+        assertThatThrownBy(() -> FlowDocsRules.branchesAreOnSteps(
+                new ClassFileImporter().importPackages("com.example.flowdocs.test.strandedbranch")))
+                .hasMessageContaining("@FlowBranch on a method that isn't a @FlowStep")
+                .hasMessageContaining("Stranded.decide(boolean)");
+    }
 }

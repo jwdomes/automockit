@@ -1,5 +1,7 @@
 package com.example.flowdocs.test.fixture;
 
+import com.example.flowdocs.Condition;
+import com.example.flowdocs.FlowBranch;
 import com.example.flowdocs.FlowStep;
 
 public class Orchestrator {
@@ -13,7 +15,14 @@ public class Orchestrator {
     }
 
     @FlowStep(action = "Orchestrate", participant = Ids.APP)
-    public String run(String in) {
+    @FlowBranch(question = "Fast?", participant = Ids.APP, gates = "Call fast", otherwise = "Call slow",
+            conditions = @Condition(label = "fast flag", test = "#fast"))
+    public String run(String in, boolean fast) {
+        if (fast) {
+            backend.callFast(in);
+        } else {
+            backend.callSlow(in);
+        }
         if (checks.first(in)) {
             backend.callOne(in);
         }

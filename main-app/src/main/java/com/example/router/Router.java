@@ -1,5 +1,7 @@
 package com.example.router;
 
+import com.example.flowdocs.Condition;
+import com.example.flowdocs.FlowBranch;
 import com.example.flowdocs.FlowStep;
 import com.example.router.dto.RequestDto;
 import com.example.router.dto.ResponseDto;
@@ -29,6 +31,9 @@ public class Router {
     }
 
     @FlowStep(action = "Determine downstream partners", participant = Participants.ROUTER)
+    @FlowBranch(question = "Use new ID provider?", participant = Participants.ROUTER,
+            gates = "Call New ID Provider", otherwise = "Call Legacy ID Provider",
+            conditions = @Condition(label = "new provider enabled", test = "#property('id-provider.use-new') == 'true'"))
     public void route(RequestDto request, ResponseDto response) {
         if (useNewIdProvider) {
             response.setPersonId(idProvider.lookupWithNew(request));

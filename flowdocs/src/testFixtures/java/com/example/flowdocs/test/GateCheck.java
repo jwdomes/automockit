@@ -8,24 +8,27 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Checks a recorded run against the declared gates: a step gated by a decision may only run after that
- * decision said yes. Catches code that calls a downstream system without asking, or despite a no.
+ * Checks a recorded run against the declared gates: a decision's or branch's gates step may only run after
+ * it said yes, and a branch's otherwise step only after it said no. Catches code that calls a downstream
+ * system without asking, or against the answer.
  */
 final class GateCheck {
 
-    /** Question -> slug of the step it gates, from {@code @FlowDecision(gates = ...)}. */
-    private final Map<String, String> gatedStepByQuestion;
+    /** Gated step slug -> (question -> the outcome that lets it run). */
+    private final Map<String, Map<String, String>> requiredOutcomes = new HashMap<>();
 
     GateCheck(FlowGraph graph) {
-        this.gatedStepByQuestion = new HashMap<>();
-        graph.nodes().stream()
-                .filter(n -> n.kind() == FlowGraph.Kind.DECISION)
-                .forEach(n -> gatedStepByQuestion.put(n.text(), n.gates()));
+        graph.nodes().stream().filter(FlowGraph.Node::isChoice).forEach(n -> {
+            requiredOutcomes.computeIfAbsent(n.gates(), k -> new HashMap<>()).put(n.text(), "yes");
+            if (n.otherwise() != null) {
+                requiredOutcomes.computeIfAbsent(n.otherwise(), k -> new HashMap<>()).put(n.text(), "no");
+            }
+        });
     }
 
     /**
-     * For each run of a gated step, the latest decision gating it among its ancestors' earlier children
-     * must have said yes. Returns one message per violation.
+     * For each run of a gated step, the latest decision gating it among its ancestors' earlier children must
+     * have given the outcome that lets it run. Returns one message per violation.
      */
     List<String> violations(List<FlowRecorder.Step> roots) {
         Map<FlowRecorder.Step, FlowRecorder.Step> parents = new IdentityHashMap<>();
@@ -33,12 +36,13 @@ final class GateCheck {
 
         List<String> violations = new ArrayList<>();
         roots.stream().flatMap(FlowRecorder.Step::flatten)
-                .filter(s -> !s.isDecision() && gatedStepByQuestion.containsValue(FlowIds.slug(s.action)))
+                .filter(s -> !s.isDecision() && requiredOutcomes.containsKey(FlowIds.slug(s.action)))
                 .forEach(step -> {
-                    FlowRecorder.Step decision = gatingDecision(step, parents);
+                    Map<String, String> required = requiredOutcomes.get(FlowIds.slug(step.action));
+                    FlowRecorder.Step decision = gatingDecision(step, required, parents);
                     if (decision == null) {
                         violations.add("\"%s\" ran without its decision being made".formatted(step.action));
-                    } else if (!"yes".equals(decision.outcome())) {
+                    } else if (!required.get(decision.action).equals(decision.outcome())) {
                         violations.add("\"%s\" ran although \"%s\" said %s".formatted(
                                 step.action, decision.action, decision.outcome()));
                     }
@@ -47,12 +51,11 @@ final class GateCheck {
     }
 
     /** Walks up from the step; at each ancestor, the latest earlier child decision gating it wins. */
-    private FlowRecorder.Step gatingDecision(FlowRecorder.Step step, Map<FlowRecorder.Step, FlowRecorder.Step> parents) {
-        String slug = FlowIds.slug(step.action);
+    private static FlowRecorder.Step gatingDecision(FlowRecorder.Step step, Map<String, String> required,
+                                                    Map<FlowRecorder.Step, FlowRecorder.Step> parents) {
         for (FlowRecorder.Step ancestor = parents.get(step); ancestor != null; ancestor = parents.get(ancestor)) {
             FlowRecorder.Step latest = ancestor.children.stream()
-                    .filter(c -> c.isDecision() && c.startSeq < step.startSeq)
-                    .filter(c -> slug.equals(gatedStepByQuestion.get(c.action)))
+                    .filter(c -> c.isDecision() && c.startSeq < step.startSeq && required.containsKey(c.action))
                     .max(Comparator.comparingLong(c -> c.startSeq))
                     .orElse(null);
             if (latest != null) {

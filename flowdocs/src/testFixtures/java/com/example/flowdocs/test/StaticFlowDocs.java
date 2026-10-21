@@ -1,14 +1,18 @@
 package com.example.flowdocs.test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** Snapshots flow.mmd (the static graph) and README.md (graph, steps and decisions, scenarios). */
 public final class StaticFlowDocs {
@@ -22,6 +26,7 @@ public final class StaticFlowDocs {
         String mermaid = graph.mermaid();
         Snapshots.verifyOrUpdate(settings.docsDir().resolve("flow.mmd"), mermaid);
         Snapshots.verifyOrUpdate(settings.docsDir().resolve("README.md"), index(settings, graph, mermaid, labels));
+        verifyEveryScenarioHasAPage(settings);
     }
 
     private static String index(FlowDocsSettings settings, FlowGraph graph, String mermaid, Map<String, String> labels)
@@ -52,16 +57,42 @@ public final class StaticFlowDocs {
 
                 ## Scenarios
 
-                | Scenario | Description | Request | Expected status |
-                | --- | --- | --- | --- |
+                | Scenario | Description | Request | Properties | Expected status |
+                | --- | --- | --- | --- | --- |
                 """);
         List<String> names = Scenario.names(settings.scenariosDir()).toList();
         for (String name : names) {
             Scenario scenario = Scenario.load(settings.scenariosDir(), name);
-            sb.append("| [%s](flows/%s.md) | %s | `%s %s` | %d |\n".formatted(name, name, scenario.description(),
-                    scenario.method(), scenario.path(), scenario.expectedStatus()));
+            sb.append("| [%s](flows/%s.md) | %s | `%s %s` | %s | %d |\n".formatted(name, name,
+                    scenario.description(), scenario.method(), scenario.path(), properties(scenario),
+                    scenario.expectedStatus()));
         }
         return sb.toString();
+    }
+
+    private static String properties(Scenario scenario) {
+        return scenario.properties().isEmpty() ? "default" : scenario.properties().entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(e -> "`%s=%s`".formatted(e.getKey(), e.getValue()))
+                .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Each scenario test class runs only the scenarios for its properties, so a scenario whose properties no
+     * class uses would silently never run. Its page then never exists, which fails here.
+     */
+    private static void verifyEveryScenarioHasAPage(FlowDocsSettings settings) throws IOException {
+        if (Boolean.getBoolean("updateFlowDocs")) {
+            return;   // pages may not be written yet; the next plain build checks
+        }
+        List<String> missing = new ArrayList<>();
+        for (String name : Scenario.names(settings.scenariosDir()).toList()) {
+            if (!Files.exists(settings.docsDir().resolve("flows/" + name + ".md"))) {
+                missing.add(name + " " + Scenario.load(settings.scenariosDir(), name).properties());
+            }
+        }
+        assertTrue(missing.isEmpty(), "Scenarios with no generated page (does a scenario test run their properties?): "
+                + missing);
     }
 
     /** Class#method linking to the source file; no line numbers, so unrelated edits don't stale the doc. */

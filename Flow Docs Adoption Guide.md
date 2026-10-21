@@ -124,7 +124,22 @@ public boolean shouldCall(RequestDto request) { ... }
 
 // Error mappings: annotate existing @ExceptionHandler methods in a @RestControllerAdvice
 @FlowStep(action = "Map partner failure to 502", participant = Participants.ROUTER)
+
+// Inline if/else with no method of its own: declare it on the step that contains it (repeatable)
+@FlowStep(action = "Determine downstream partners", participant = Participants.ROUTER)
+@FlowBranch(question = "Use new ID provider?", participant = Participants.ROUTER,
+        gates = "Call New ID Provider", otherwise = "Call Legacy ID Provider",
+        conditions = @Condition(label = "new provider enabled", test = "#property('id-provider.use-new') == 'true'"))
+public void route(RequestDto request, ResponseDto response) { if (useNewIdProvider) { ... } else { ... } }
 ```
+
+**How `@FlowBranch` works**
+- **Outcome.** It's "yes" if the `gates` step runs during the method call, and "no" if the
+  `otherwise` step does.
+- **Placement.** The branch is recorded just before that step.
+- **Conditions** are evaluated when the method starts.
+- **`#property('key')`** reads the app's configuration in any condition or note.
+- **Prefer `@FlowDecision`** when the `if` already calls a method you can annotate.
 
 These rules are enforced at build time by `FlowDocsRules`:
 
@@ -137,6 +152,10 @@ These rules are enforced at build time by `FlowDocsRules`:
   - `gates` names an existing step action
   - are called directly from a `@FlowStep` method, which is how the graph orders them
   - the calling step can reach the gated step
+- **Branches:**
+  - sit on a `@FlowStep` method
+  - `gates` and `otherwise` name existing steps
+  - the annotated step can reach both
 - **Unique names.** Actions and questions are unique.
 - **Declared participants.** Every participant id is declared.
 - **Valid expressions.** Every expression parses.
@@ -212,13 +231,20 @@ class FlowScenarioDocsTest {
     @Autowired MockMvc mvc;
     @Autowired FlowRecorder recorder;
 
-    static Stream<String> scenarios() throws IOException { return Scenario.names(AppFlowDocs.SETTINGS.scenariosDir()); }
+    // Only the scenarios whose "properties" match this context's; Map.of() for the defaults
+    static Stream<String> scenarios() throws IOException { return Scenario.names(AppFlowDocs.SETTINGS.scenariosDir(), Map.of()); }
 
     @ParameterizedTest(name = "{0}") @MethodSource("scenarios")
     void scenario(String name) throws Exception { RUNNER.run(name, mvc, recorder); }
 }
 ```
 
+- **One test class per configuration.** Scenarios that need different configuration (section 7,
+  `properties`) run from another test class with those properties in its `@SpringBootTest`. It
+  passes the same map to `Scenario.names`. Shared wiring can live in an abstract base class, like
+  `ScenarioDocsTestSupport` in this repo. Two guards apply:
+  - a scenario fails if its context lacks its properties
+  - the build fails if a scenario has no generated page, meaning no class runs its properties
 - **`http2PlainDisabled(true)` is required.** Spring's `RestClient` uses the JDK HttpClient, which
   tries an h2c upgrade (HTTP/2 over plain HTTP). WireMock's Jetty resets that connection.
 - **Optional prod-neutral check.** A test that boots without the property and asserts that a
@@ -233,6 +259,7 @@ class FlowScenarioDocsTest {
   "description": "One line, shown on the page and in the diagram",
   "method": "POST",
   "path": "/search",
+  "properties": { "id-provider.use-new": "true" },
   "request": { "...": "body sent to the app" },
   "expectedStatus": 200,
   "stubs": [ { "request": { "...": "standard WireMock mapping" },
@@ -240,6 +267,7 @@ class FlowScenarioDocsTest {
 }
 ```
 
+- `properties` is optional. Leave it out for scenarios that use the default configuration.
 - **Unique keys.** Give each scenario a unique key, such as an id in the downstream request body,
   and match on it with `bodyPatterns`. This keeps stubs from overlapping when Gatling loads them
   all at once.
@@ -285,7 +313,9 @@ Then:
 - Run the load test:
   1. Start the app with `--spring.profiles.active=wiremock --flow.observations.enabled=true`.
   2. Run `./gradlew :<app>:gatlingRun`, setting `APP_URL`, `WIREMOCK_URL`, `PARTNER_DELAY_MS`,
-     `PEAK_USERS_PER_SEC` and `RAMP_SECONDS` as needed.
+     `PEAK_USERS_PER_SEC` and `RAMP_SECONDS` as needed. `GATLING_PROPERTIES=key=value,...` selects the
+     scenarios for that configuration. Start the app with the same settings. The default is the
+     scenarios without `properties`.
   3. Read per-step timings from `/actuator/metrics/flow.step`. It's tagged with `flow.step`,
      `flow.participant`, `flow.kind` and `flow.outcome`.
 

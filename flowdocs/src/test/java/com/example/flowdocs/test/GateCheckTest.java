@@ -10,7 +10,7 @@ import io.micrometer.observation.Observation;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Fixture gates: "First?" gates "Call one", "Second?" gates "Call two". */
+/** Fixture gates: "First?" gates "Call one", "Second?" gates "Call two"; branch "Fast?" gates "Call fast", otherwise "Call slow". */
 class GateCheckTest {
 
     private static final String FIXTURE = "com.example.flowdocs.test.fixture";
@@ -48,6 +48,17 @@ class GateCheckTest {
     @Test
     void ungatedStepsAreIgnored() {
         assertThat(check.violations(List.of(parent(step("Receive", 2))))).isEmpty();
+    }
+
+    @Test
+    void otherwiseStepAfterANoPasses() {
+        assertThat(check.violations(List.of(parent(decision("Fast?", "no", 2), step("Call slow", 3))))).isEmpty();
+    }
+
+    @Test
+    void otherwiseStepAfterAYesFails() {
+        assertThat(check.violations(List.of(parent(decision("Fast?", "yes", 2), step("Call slow", 3)))))
+                .containsExactly("\"Call slow\" ran although \"Fast?\" said yes");
     }
 
     private static FlowRecorder.Step parent(FlowRecorder.Step... children) {

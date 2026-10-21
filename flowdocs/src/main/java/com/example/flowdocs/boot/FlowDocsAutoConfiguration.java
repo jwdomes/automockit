@@ -15,6 +15,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Role;
 import org.springframework.core.env.Environment;
+import org.springframework.core.env.PropertyResolver;
 
 /**
  * Registers nothing unless flow.observations.enabled=true, so @FlowStep and @FlowDecision stay inert
@@ -29,12 +30,13 @@ public class FlowDocsAutoConfiguration {
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     static Advisor flowObservationAdvisor(ObjectProvider<ObservationRegistry> registry, Environment environment) {
-        return advisor(registry::getObject, environment.getProperty("flow.observations.strict", Boolean.class, false));
+        return advisor(registry::getObject, environment,
+                environment.getProperty("flow.observations.strict", Boolean.class, false));
     }
 
-    static Advisor advisor(Supplier<ObservationRegistry> registry, boolean strict) {
+    static Advisor advisor(Supplier<ObservationRegistry> registry, PropertyResolver properties, boolean strict) {
         ComposablePointcut pointcut = new ComposablePointcut(AnnotationMatchingPointcut.forMethodAnnotation(FlowStep.class))
                 .union(AnnotationMatchingPointcut.forMethodAnnotation(FlowDecision.class));
-        return new DefaultPointcutAdvisor(pointcut, new FlowObservationInterceptor(registry, strict));
+        return new DefaultPointcutAdvisor(pointcut, new FlowObservationInterceptor(registry, properties, strict));
     }
 }

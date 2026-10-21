@@ -38,6 +38,7 @@ SSN, PNumber, valid passport and license: A, B and C are all called
 
 | Decision | Outcome | Conditions |
 | --- | --- | --- |
+| Use new ID provider? | no | new provider enabled ✗ |
 | Partner A eligible? | yes | SSN present ✓, valid passport ✓ |
 | Partner B eligible? | yes | PNumber present ✓, valid driver license ✓ |
 | Partner C eligible? | yes | SSN present ✓ |
@@ -55,6 +56,7 @@ sequenceDiagram
     participant PARTNER_C as Partner C
     UPSTREAM->>ROUTER: Receive search request
     ROUTER->>ROUTER: Determine downstream partners
+    Note over ROUTER: Use new ID provider? no — new provider enabled ✗
     ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
     LEGACY_ID_PROVIDER-->>ROUTER: response
     Note over ROUTER: Partner A eligible? yes — SSN present ✓, valid passport ✓
