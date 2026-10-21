@@ -1,0 +1,25 @@
+meta {
+  name: New ID provider lookup
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/new-id-provider/lookup
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "firstName": "Ada",
+    "lastName": "Lovelace",
+    "birthDate": "1815-12-10",
+    "ssn": "111223333",
+    "pNumber": null
+  }
+}
+
+docs {
+  Stands in for the new ID provider. Any lookup returns a templated personId: NEW-<lastName>-<birthDate>, here NEW-Lovelace-1815-12-10. Priority 10, so flow-scenario stubs win.
+}

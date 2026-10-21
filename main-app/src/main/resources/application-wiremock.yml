@@ -1,0 +1,7 @@
+partners:
+  a:
+    base-url: http://localhost:8080/partner-a
+  b:
+    base-url: http://localhost:8080/partner-b
+  c:
+    base-url: http://localhost:8080/partner-c

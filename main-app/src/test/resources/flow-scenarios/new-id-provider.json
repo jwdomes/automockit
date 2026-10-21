@@ -1,0 +1,47 @@
+{
+  "description": "New ID provider switched on: the person id comes from the new provider; no identifiers, so no partner is called",
+  "method": "POST",
+  "path": "/search",
+  "properties": {
+    "id-provider.use-new": "true"
+  },
+  "request": {
+    "header": {
+      "requestId": "new-id-provider",
+      "source": "flow-scenario",
+      "timestamp": "2026-10-20T12:00:00Z"
+    },
+    "documents": [],
+    "person": {
+      "first": "Mo",
+      "last": "Grant",
+      "birthDate": "1988-08-08"
+    }
+  },
+  "expectedStatus": 200,
+  "stubs": [
+    {
+      "request": {
+        "method": "POST",
+        "urlPath": "/new-id-provider/lookup",
+        "bodyPatterns": [
+          {
+            "matchesJsonPath": {
+              "expression": "$.lastName",
+              "equalTo": "Grant"
+            }
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "personId": "NEW-GRANT"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+plugins {
+    id 'org.springframework.boot' version '4.0.8' apply false
+}
+
+subprojects {
+    repositories {
+        mavenCentral()
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+}

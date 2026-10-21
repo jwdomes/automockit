@@ -1,0 +1,53 @@
+flowchart TD
+    subgraph LEGACY_ID_PROVIDER["Legacy ID Provider"]
+        call_legacy_id_provider["Call Legacy ID Provider"]
+    end
+    subgraph NEW_ID_PROVIDER["New ID Provider"]
+        call_new_id_provider["Call New ID Provider"]
+    end
+    subgraph PARTNER_A["Partner A"]
+        call_partner_a["Call Partner A"]
+    end
+    subgraph PARTNER_B["Partner B"]
+        call_partner_b["Call Partner B"]
+    end
+    subgraph PARTNER_C["Partner C"]
+        call_partner_c["Call Partner C"]
+    end
+    subgraph ROUTER["Router"]
+        determine_downstream_partners["Determine downstream partners"]
+        map_partner_failure_to_502["Map partner failure to 502"]
+        subgraph partner_a_eligible["Partner A eligible?"]
+            partner_a_eligible__ssn_present{"SSN present?"}
+            partner_a_eligible__valid_passport{"valid passport?"}
+        end
+        subgraph partner_b_eligible["Partner B eligible?"]
+            partner_b_eligible__pnumber_present{"PNumber present?"}
+            partner_b_eligible__valid_driver_license{"valid driver license?"}
+        end
+        subgraph partner_c_eligible["Partner C eligible?"]
+            partner_c_eligible__ssn_present{"SSN present?"}
+        end
+        receive_search_request["Receive search request"]
+        subgraph use_new_id_provider["Use new ID provider?"]
+            use_new_id_provider__new_provider_enabled{"new provider enabled?"}
+        end
+    end
+    call_legacy_id_provider --> partner_a_eligible__ssn_present
+    call_new_id_provider --> partner_a_eligible__ssn_present
+    call_partner_a --> partner_b_eligible__pnumber_present
+    call_partner_b --> partner_c_eligible__ssn_present
+    determine_downstream_partners --> use_new_id_provider__new_provider_enabled
+    partner_a_eligible__ssn_present -->|no| partner_b_eligible__pnumber_present
+    partner_a_eligible__ssn_present -->|yes| partner_a_eligible__valid_passport
+    partner_a_eligible__valid_passport -->|no| partner_b_eligible__pnumber_present
+    partner_a_eligible__valid_passport -->|yes| call_partner_a
+    partner_b_eligible__pnumber_present -->|no| partner_c_eligible__ssn_present
+    partner_b_eligible__pnumber_present -->|yes| partner_b_eligible__valid_driver_license
+    partner_b_eligible__valid_driver_license -->|no| partner_c_eligible__ssn_present
+    partner_b_eligible__valid_driver_license -->|yes| call_partner_b
+    partner_c_eligible__ssn_present -->|yes| call_partner_c
+    receive_search_request --> determine_downstream_partners
+    receive_search_request -.->|"RestClientException"| map_partner_failure_to_502
+    use_new_id_provider__new_provider_enabled -->|no| call_legacy_id_provider
+    use_new_id_provider__new_provider_enabled -->|yes| call_new_id_provider

@@ -1,0 +1,22 @@
+sequenceDiagram
+    %% Partner B returns 500 after A succeeds: request fails with 502 and C is never called
+    participant UPSTREAM as Upstream
+    participant ROUTER as Router
+    participant LEGACY_ID_PROVIDER as Legacy ID Provider
+    participant PARTNER_A as Partner A
+    participant PARTNER_B as Partner B
+    UPSTREAM->>ROUTER: Receive search request
+    ROUTER->>ROUTER: Determine downstream partners
+    Note over ROUTER: Use new ID provider? no — new provider enabled ✗
+    ROUTER->>LEGACY_ID_PROVIDER: Call Legacy ID Provider
+    LEGACY_ID_PROVIDER-->>ROUTER: response
+    Note over ROUTER: Partner A eligible? yes — SSN present ✓, valid passport ✓
+    Note over ROUTER,PARTNER_A: Using passport FA0000006
+    ROUTER->>PARTNER_A: Call Partner A
+    PARTNER_A-->>ROUTER: response
+    Note over ROUTER: Partner B eligible? yes — PNumber present ✓, valid driver license ✓
+    Note over ROUTER,PARTNER_B: Using driver license F00000006
+    ROUTER->>PARTNER_B: Call Partner B
+    PARTNER_B--xROUTER: InternalServerError
+    ROUTER->>ROUTER: Map partner failure to 502
+    ROUTER-->>UPSTREAM: 502 Bad Gateway

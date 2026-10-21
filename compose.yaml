@@ -1,0 +1,12 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: automockit-pg
+    environment:
+      POSTGRES_USER: automockit
+      POSTGRES_PASSWORD: automockit
+      POSTGRES_DB: automockit
+    ports:
+      - "127.0.0.1:5442:5432"
+    volumes:
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro

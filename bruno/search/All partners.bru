@@ -1,0 +1,26 @@
+meta {
+  name: All partners
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{appUrl}}/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "header": { "requestId": "req-all", "source": "bruno", "timestamp": "2026-10-20T12:00:00Z" },
+    "documents": [
+      { "documentType": "PASSPORT", "documentNumber": "AB1234567" },
+      { "documentType": "DRIVER_LICENSE", "documentNumber": "L10000001" }
+    ],
+    "person": { "first": "Ada", "last": "Lovelace", "ssn": "111223333", "pNumber": "PN1001", "birthDate": "1815-12-10" }
+  }
+}
+
+docs {
+  SSN + valid passport calls A, PNumber + valid license calls B, SSN calls C. Each partner ranks Ada Lovelace first at 1.0, with near-miss seed rows below.
+}

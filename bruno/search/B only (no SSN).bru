@@ -1,0 +1,25 @@
+meta {
+  name: B only (no SSN)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{appUrl}}/search
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "header": { "requestId": "req-b", "source": "bruno", "timestamp": "2026-10-20T12:00:00Z" },
+    "documents": [
+      { "documentType": "DRIVER_LICENSE", "documentNumber": "J30000003" }
+    ],
+    "person": { "first": "Katherine", "last": "Johnson", "pNumber": "PN1003", "birthDate": "1918-08-26" }
+  }
+}
+
+docs {
+  No SSN, so A and C are skipped. B matches Katherine Johnson on PNumber and license.
+}

@@ -1,0 +1,24 @@
+server:
+  port: 8090
+
+partners:
+  a:
+    base-url: http://localhost:8091/partner-a
+  b:
+    base-url: http://localhost:8092/partner-b
+  c:
+    base-url: http://localhost:8093/partner-c
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+
+# ID providers exist only as WireMock stubs (mappings/id-providers.json).
+id-provider:
+  use-new: false
+  new:
+    base-url: http://localhost:8080/new-id-provider
+  legacy:
+    base-url: http://localhost:8080/legacy-id-provider

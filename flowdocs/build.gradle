@@ -1,0 +1,41 @@
+plugins {
+    id 'java-library'
+    // src/testFixtures holds the test support; apps add it with testImplementation testFixtures(project(':flowdocs')),
+    // so its dependencies (ArchUnit, WireMock, JUnit) never reach their main classpath.
+    id 'java-test-fixtures'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+// Test fixtures name SpEL variables after parameters, as apps built with the Boot plugin do.
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add('-parameters')
+}
+
+dependencies {
+    implementation platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    implementation 'org.springframework:spring-aop'
+    implementation 'org.springframework:spring-expression'
+    implementation 'io.micrometer:micrometer-observation'
+    implementation 'org.slf4j:slf4j-api'
+
+    testFixturesApi platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    testFixturesApi 'com.tngtech.archunit:archunit-junit5:1.5.1'
+    testFixturesApi 'org.wiremock:wiremock-standalone:3.13.2'
+    testFixturesApi 'org.springframework.boot:spring-boot-test'
+    testFixturesApi 'org.springframework:spring-test'
+    testFixturesApi 'org.springframework:spring-web'
+    testFixturesApi 'org.springframework:spring-webmvc'
+    testFixturesApi 'org.junit.jupiter:junit-jupiter-api'
+    testFixturesImplementation 'io.micrometer:micrometer-observation'
+    testFixturesImplementation 'tools.jackson.core:jackson-databind'
+    testFixturesCompileOnly 'jakarta.servlet:jakarta.servlet-api'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

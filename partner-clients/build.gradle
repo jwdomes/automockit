@@ -1,0 +1,17 @@
+// Stands in for the separate client repo: interfaces and RestClient implementations, wired by
+// auto-configuration. Deliberately independent of main-app and flowdocs.
+plugins {
+    id 'java-library'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    implementation platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+    implementation 'org.springframework.boot:spring-boot-autoconfigure'
+    api 'org.springframework:spring-web'
+}
